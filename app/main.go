@@ -1,42 +1,40 @@
 package main
 
 import (
-	"context"
 	"log"
 
-	_ "github.com/gordejka179/repository"
+	_ "github.com/gordejka179/CourseWorkDB/config"
+	_ "github.com/gordejka179/CourseWorkDB/internal/handler"
+	_ "github.com/gordejka179/CourseWorkDB/internal/usecase"
+	"github.com/gordejka179/CourseWorkDB/repository"
+	_ "github.com/gordejka179/CourseWorkDB/server"
 )
 
-type Config struct {
-	appPort string
-}
 
 func main() {
-	conf := InitConfig()
+	conf := config.InitConfig()
 
+	err := repository.CreateTables(conf.dbUsername, conf.dbPassword, conf.dbHost, conf.dbName)
 
-	ctx := context.Background()
-    pool, err := db.NewPostgresPool(ctx, "postgres://user:pass@localhost:5432/library?sslmode=disable")
+	if err != nil {
+		log.Fatalf("Error occured while creating table: %s%s", err.Error(), conf.appPort, conf.dbUsername, conf.dbPassword, conf.dbName, conf.SessionSecret, conf.dbHost)
+	}
+
+	db, err := repository.NewPostgresDB(conf.DB)
     if err != nil {
-        log.Fatal(err)
+        log.Fatal("cannot connect to db:", err)
     }
-    defer pool.Close()
+    defer db.Close()
 
-    repo := repository.NewBookRepository(pool)
+    repo := repository.NewRepository(db)
 
-    reserveUseCase := usecase.NewReserveBook(repo)
+    service := usecase.NewService(repo)
 
-    handler := handler.NewLibraryHandler(reserveUseCase)
+    handler := handler.NewUserHandler(service)
 
-
-	if err := srv.Run(conf.appPort, handlers.InitRoutes()); err != nil {
+	if err := server.Run(conf.appPort, handler.InitRoutes()); err != nil {
 		log.Fatalf("Error occured while running http server: %s", err.Error())
 	}
 
 }
 
-func InitConfig() Config {
-	return Config{
-		appPort: "8080",
-	}
-}

@@ -1,0 +1,39 @@
+{{ define "registration" }}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Регистрация</title>
+    <style>
+        label, input, button {
+            display: block;
+            margin-bottom: 10px;
+        }
+        input, button {
+            padding: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Регистрация</h2>
+    <form method="post" action="/register">
+        <label>Фамилия:
+            <input type="text" name="last_name" required>
+        </label>
+        <label>Имя:
+            <input type="text" name="first_name" required>
+        </label>
+        <label>Отчество:
+            <input type="text" name="patronymic">
+        </label>
+        <label>Почта:
+            <input type="email" name="email" required>
+        </label>
+        <label>Адрес:
+            <input type="text" name="address" required>
+        </label>
+        <button type="submit">Зарегистрироваться</button>
+    </form>
+</body>
+</html>
+{{ end }}

@@ -13,7 +13,6 @@ CREATE TABLE Librarian (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    phone VARCHAR(20),
     FirstName VARCHAR(100) NOT NULL,
     LastName VARCHAR(100) NOT NULL,
     Patronymic VARCHAR(100),
@@ -33,7 +32,6 @@ CREATE TABLE Publisher (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) UNIQUE NOT NULL,
     address VARCHAR(255),
-    phone VARCHAR(20)
 );
 
 CREATE TABLE Book (
@@ -57,7 +55,6 @@ CREATE TABLE LibraryBuilding (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) UNIQUE NOT NULL,
     address VARCHAR(255) NOT NULL,
-    phone VARCHAR(20),
     description TEXT
 );
 
@@ -77,8 +74,7 @@ CREATE TABLE Reader (
     FirstName VARCHAR(100) NOT NULL,
     LastName VARCHAR(100) NOT NULL,
     Patronymic VARCHAR(100),
-    phone VARCHAR(20),
-    address VARCHAR(255)
+    Address VARCHAR(255)
 );
 
 CREATE TABLE Reservation (
@@ -102,7 +98,6 @@ CREATE TABLE Loan (
     status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'returned'))
 );
 
--- Индексы для ускорения поиска
 CREATE INDEX idx_book_title ON Book(title);
 CREATE INDEX idx_book_bbk ON Book(bbk);
 CREATE INDEX idx_book_udk ON Book(udk);
@@ -115,27 +110,22 @@ CREATE INDEX idx_copy_building ON Copy(building_id);
 CREATE INDEX idx_reservation_copy_status ON Reservation(copy_id, status);
 CREATE INDEX idx_loan_copy_status ON Loan(copy_id, status);
 
+INSERT INTO Librarian (email, password_hash, FirstName, LastName, Patronymic, Is_admin) VALUES
+('admin@library.ru', 'hashed_password_1', 'Иван', 'Иванов', 'Иванович', true),
+('librarian1@library.ru', 'hashed_password_2', 'Мария', 'Петрова', 'Сергеевна', false),
+('librarian2@library.ru', 'hashed_password_3', 'Алексей', 'Смирнов', 'Викторович', false);
 
--- Библиотекари
-INSERT INTO Librarian (email, password_hash, phone, FirstName, LastName, Patronymic, Is_admin) VALUES
-('admin@library.ru', 'hashed_password_1', '+7-495-123-45-67', 'Иван', 'Иванов', 'Иванович', true),
-('librarian1@library.ru', 'hashed_password_2', '+7-495-234-56-78', 'Мария', 'Петрова', 'Сергеевна', false),
-('librarian2@library.ru', 'hashed_password_3', '+7-495-345-67-89', 'Алексей', 'Смирнов', 'Викторович', false);
+INSERT INTO LibraryBuilding (name, Address, description) VALUES
+('Главное здание', 'ул. Университетская, 1, г. Москва', 'Основной корпус, отдел художественной литературы'),
+('Научная библиотека', 'пр. Ленина, 22, г. Москва', 'Научный фонд, редкие книги'),
+('Детский отдел', 'ул. Пушкина, 10, г. Москва', 'Литература для детей и подростков');
 
--- Здания библиотек
-INSERT INTO LibraryBuilding (name, address, phone, description) VALUES
-('Главное здание', 'ул. Университетская, 1, г. Москва', '+7-495-111-22-33', 'Основной корпус, отдел художественной литературы'),
-('Научная библиотека', 'пр. Ленина, 22, г. Москва', '+7-495-222-33-44', 'Научный фонд, редкие книги'),
-('Детский отдел', 'ул. Пушкина, 10, г. Москва', '+7-495-333-44-55', 'Литература для детей и подростков');
+INSERT INTO Publisher (name, Address) VALUES
+('Эксмо', 'г. Москва, ул. Клары Цеткин, 33',),
+('АСТ', 'г. Москва, ул. Правды, 15'),
+('Наука', 'г. Москва, ул. Профсоюзная, 90'),
+('Oxford University Press', 'Oxford, UK');
 
--- Издательства
-INSERT INTO Publisher (name, address, phone) VALUES
-('Эксмо', 'г. Москва, ул. Клары Цеткин, 33', '+7-495-444-55-66'),
-('АСТ', 'г. Москва, ул. Правды, 15', '+7-495-555-66-77'),
-('Наука', 'г. Москва, ул. Профсоюзная, 90', '+7-495-666-77-88'),
-('Oxford University Press', 'Oxford, UK', '+44-1865-556677');
-
--- Авторы
 INSERT INTO Author (birth_date, FirstName, LastName, Patronymic, description) VALUES
 ('1828-09-09', 'Лев', 'Толстой', 'Николаевич', 'Великий русский писатель'),
 ('1821-11-11', 'Фёдор', 'Достоевский', 'Михайлович', 'Русский писатель, мыслитель'),
@@ -143,7 +133,6 @@ INSERT INTO Author (birth_date, FirstName, LastName, Patronymic, description) VA
 ('1891-05-15', 'Михаил', 'Булгаков', 'Афанасьевич', 'Русский писатель, драматург'),
 ('1775-12-16', 'Джейн', 'Остин', '', 'Английская писательница');
 
--- Книги
 INSERT INTO Book (title, bbk, udc, isbn, publication_year, publisher_id) VALUES
 ('Война и мир', '84(2Рос)1', '821.161.1', '978-5-699-12345-6', 2008, (SELECT id FROM Publisher WHERE name='Эксмо')),
 ('Преступление и наказание', '84(2Рос)1', '821.161.1', '978-5-17-12345-7', 2015, (SELECT id FROM Publisher WHERE name='АСТ')),
@@ -151,7 +140,6 @@ INSERT INTO Book (title, bbk, udc, isbn, publication_year, publisher_id) VALUES
 ('Мастер и Маргарита', '84(2Рос)1', '821.161.1', '978-5-17-98765-4', 2012, (SELECT id FROM Publisher WHERE name='АСТ')),
 ('Гордость и предубеждение', '84(4Вел)', '821.111', '978-0-19-953556-9', 2006, (SELECT id FROM Publisher WHERE name='Oxford University Press'));
 
--- Связи книг и авторов
 INSERT INTO BookAuthor (book_id, author_id) VALUES
 ((SELECT id FROM Book WHERE isbn='978-5-699-12345-6'), (SELECT id FROM Author WHERE LastName='Толстой')),
 ((SELECT id FROM Book WHERE isbn='978-5-17-12345-7'), (SELECT id FROM Author WHERE LastName='Достоевский')),
@@ -159,7 +147,6 @@ INSERT INTO BookAuthor (book_id, author_id) VALUES
 ((SELECT id FROM Book WHERE isbn='978-5-17-98765-4'), (SELECT id FROM Author WHERE LastName='Булгаков')),
 ((SELECT id FROM Book WHERE isbn='978-0-19-953556-9'), (SELECT id FROM Author WHERE LastName='Остин'));
 
--- Экземпляры книг (по 2-3 экземпляра на книгу в разных зданиях)
 INSERT INTO Copy (inventory_number, acquisition_date, book_id, building_id) VALUES
 ('INV-001', '2020-01-15', (SELECT id FROM Book WHERE isbn='978-5-699-12345-6'), (SELECT id FROM LibraryBuilding WHERE name='Главное здание')),
 ('INV-002', '2020-02-10', (SELECT id FROM Book WHERE isbn='978-5-699-12345-6'), (SELECT id FROM LibraryBuilding WHERE name='Научная библиотека')),
@@ -173,7 +160,7 @@ INSERT INTO Copy (inventory_number, acquisition_date, book_id, building_id) VALU
 ('INV-010', '2020-10-25', (SELECT id FROM Book WHERE isbn='978-0-19-953556-9'), (SELECT id FROM LibraryBuilding WHERE name='Главное здание'));
 
 -- Читатели
-INSERT INTO Reader (email, library_card_number, password_hash, FirstName, LastName, Patronymic, phone, address) VALUES
-('reader1@mail.ru', 'LIB-001', 'hashed_reader1', 'Ольга', 'Кузнецова', 'Алексеевна', '+7-916-111-22-33', 'г. Москва, ул. Ленина, 10, кв. 5'),
-('reader2@mail.ru', 'LIB-002', 'hashed_reader2', 'Дмитрий', 'Соколов', 'Игоревич', '+7-916-222-33-44', 'г. Москва, ул. Мира, 15, кв. 78'),
-('reader3@mail.ru', 'LIB-003', 'hashed_reader3', 'Елена', 'Волкова', 'Петровна', '+7-916-333-44-55', 'г. Москва, ул. Горького, 5, кв. 12');
+INSERT INTO Reader (email, library_card_number, password_hash, FirstName, LastName, Patronymic, Address) VALUES
+('reader1@mail.ru', 'LIB-001', 'hashed_reader1', 'Ольга', 'Кузнецова', 'Алексеевна', 'г. Москва, ул. Ленина, 10, кв. 5'),
+('reader2@mail.ru', 'LIB-002', 'hashed_reader2', 'Дмитрий', 'Соколов', 'Игоревич', 'г. Москва, ул. Мира, 15, кв. 78'),
+('reader3@mail.ru', 'LIB-003', 'hashed_reader3', 'Елена', 'Волкова', 'Петровна', 'г. Москва, ул. Горького, 5, кв. 12');

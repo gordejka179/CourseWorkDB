@@ -2,26 +2,45 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
+	"log"
+	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/lib/pq"
 )
 
-func NewPostgresPool(ctx context.Context, connString string) (*pgxpool.Pool, error) {
-    config, err := pgxpool.ParseConfig(connString)
-    if err != nil {
-        return nil, err
-    }
-	
-    config.MaxConns = 10
+type DBConfig struct {
+    Host     string
+    Port     int
+    User     string
+    Password string
+    DBName   string
+}
 
-    pool, err := pgxpool.NewWithConfig(ctx, config)
+func NewPostgresDB(cfg DBConfig) (*sql.DB, error) {
+    dsn := fmt.Sprintf(
+        "host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+        cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName,
+    )
+
+
+    db, err := sql.Open("postgres", dsn)
     if err != nil {
-        return nil, err
+        return nil, fmt.Errorf("failed to open db: %w", err)
     }
 
-    // Проверка соединения
-    if err = pool.Ping(ctx); err != nil {
-        return nil, err
+    db.SetMaxOpenConns(25)
+    db.SetMaxIdleConns(10)
+    db.SetConnMaxLifetime(5 * time.Minute)
+
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+    if err := db.PingContext(ctx); err != nil {
+        db.Close()
+        return nil, fmt.Errorf("db unreachable: %w", err)
     }
-    return pool, nil
+
+    log.Println("PostgreSQL connected")
+    return db, nil
 }
