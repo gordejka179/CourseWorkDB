@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"app/pkg"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
@@ -10,7 +9,8 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
-	"github.com/gordejka179/CourseWorkDB/config/repository"
+	"github.com/gordejka179/CourseWorkDB/internal/repository"
+	"github.com/gordejka179/CourseWorkDB/pkg"
 )
 
 const (
