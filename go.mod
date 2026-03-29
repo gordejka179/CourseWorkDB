@@ -1,4 +1,4 @@
-module app
+module github.com/gordejka179/CourseWorkDB
 
 go 1.26.1
 
