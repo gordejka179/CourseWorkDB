@@ -6,7 +6,7 @@ import (
 	_ "github.com/gordejka179/CourseWorkDB/config"
 	_ "github.com/gordejka179/CourseWorkDB/internal/handler"
 	_ "github.com/gordejka179/CourseWorkDB/internal/usecase"
-	"github.com/gordejka179/CourseWorkDB/repository"
+	"github.com/gordejka179/CourseWorkDB/intetnal/repository"
 	_ "github.com/gordejka179/CourseWorkDB/server"
 )
 
