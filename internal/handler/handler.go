@@ -2,9 +2,15 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/gordejka179/CourseWorkDB/internal/usecase"
 )
 
 type Handler struct {
+	service *usecase.Service
+}
+
+func NewUserHandler(service *usecase.Service) *Handler {
+    return &Handler{service: service}
 }
 
 func (h *Handler) InitRoutes() *gin.Engine {

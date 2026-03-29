@@ -7,21 +7,23 @@ import (
 	"log"
 	"time"
 
+	"github.com/gordejka179/CourseWorkDB/internal/models"
 	_ "github.com/lib/pq"
 )
 
-type DBConfig struct {
-    Host     string
-    Port     int
-    User     string
-    Password string
-    DBName   string
+
+type Repository struct {
+    db *sql.DB
 }
 
-func NewPostgresDB(cfg DBConfig) (*sql.DB, error) {
+func NewRepository(db *sql.DB) *Repository {
+    return &Repository{db: db}
+}
+
+func NewPostgresDB(cfg models.DBConfig) (*sql.DB, error) {
     dsn := fmt.Sprintf(
-        "host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-        cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName,
+        "host=%s user=%s password=%s dbname=%s sslmode=disable",
+        cfg.DBHost, cfg.DBUsername, cfg.DBPassword, cfg.DBName,
     )
 
 

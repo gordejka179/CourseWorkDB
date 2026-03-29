@@ -1,4 +1,4 @@
-package handler
+package usecase
 
 import (
 	"crypto/md5"
@@ -34,10 +34,6 @@ type RegistrationForm struct {
 	Email     string `json:"email"`
 	Address   string `json:"address"`
 }
-
-var (
-	jwtSecret = "secret-key"
-)
 
 
 // проверка, залогинился ли уже пользователь

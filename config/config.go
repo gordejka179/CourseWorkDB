@@ -1,37 +1,23 @@
 package config
 
-type Config struct {
-    Server ServerConfig
-    DB     DBConfig
-}
-
-type ServerConfig struct {
-    Port string
-}
-
-type DBConfig struct {
-	dbUsername:    "postgres",
-	dbPassword:    "qwerty",
-	dbName:        "library",
-	dbHost:        "localhost",
-}
+import "github.com/gordejka179/CourseWorkDB/internal/models"
 
 
-func InitConfig() Config {
-	dbC := DBConfig{
-		dbUsername:    "postgres",
-		dbPassword:    "qwerty",
-		dbName:        "library",
-		dbHost:        "localhost",
+func InitConfig() models.Config {
+	dbC := models.DBConfig{
+		DBUsername:    "postgres",
+		DBPassword:    "qwerty",
+		DBName:        "library",
+		DBHost:        "localhost",
 	}
 
-	sC := ServerConfig{
-		app := "8080",
+	sC := models.ServerConfig{
+		Port : "8080",
 	}
 	
-	cfg := Config{
-		Server := sC,
-		DB := dbc,
+	cfg := models.Config{
+		Server : sC,
+		DB : dbC,
 
 	}
 
