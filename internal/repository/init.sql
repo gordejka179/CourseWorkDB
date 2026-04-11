@@ -1,166 +1,366 @@
-DROP TABLE IF EXISTS Loan CASCADE;
-DROP TABLE IF EXISTS Reservation CASCADE;
+DROP TABLE IF EXISTS BBKAlternative CASCADE;
+DROP TABLE IF EXISTS BBKMapping CASCADE;
 DROP TABLE IF EXISTS Copy CASCADE;
+DROP TABLE IF EXISTS BBKRecord CASCADE;
 DROP TABLE IF EXISTS BookAuthor CASCADE;
-DROP TABLE IF EXISTS Book CASCADE;
-DROP TABLE IF EXISTS Author CASCADE;
-DROP TABLE IF EXISTS Publisher CASCADE;
-DROP TABLE IF EXISTS LibraryBuilding CASCADE;
+DROP TABLE IF EXISTS OtherIndex CASCADE;
+DROP TABLE IF EXISTS ISBNOther CASCADE;
+DROP TABLE IF EXISTS ISBN CASCADE;
 DROP TABLE IF EXISTS Reader CASCADE;
+DROP TABLE IF EXISTS LibraryBuilding CASCADE;
+DROP TABLE IF EXISTS BBKDictionary CASCADE;
+DROP TABLE IF EXISTS Publication CASCADE;
+DROP TABLE IF EXISTS Author CASCADE;
 DROP TABLE IF EXISTS Librarian CASCADE;
 
-CREATE TABLE Librarian (
-    id SERIAL PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    FirstName VARCHAR(100) NOT NULL,
-    LastName VARCHAR(100) NOT NULL,
-    Patronymic VARCHAR(100),
-    Is_admin BOOLEAN DEFAULT FALSE
+
+CREATE TABLE Publication (
+    publicationId SERIAL PRIMARY KEY,
+    title VARCHAR NOT NULL,
+    publicationYear INT
 );
+
+
+CREATE TABLE ISBN (
+    ISBN VARCHAR(18) PRIMARY KEY,
+    publicationId INT NOT NULL,
+    FOREIGN KEY (publicationId) REFERENCES Publication(publicationId) ON DELETE CASCADE
+);
+
+CREATE TABLE ISBNOther (
+    publicationId INT NOT NULL,
+    ISBN VARCHAR(18) NOT NULL,
+    PRIMARY KEY (publicationId, ISBN),
+    FOREIGN KEY (publicationId) REFERENCES Publication(publicationId) ON DELETE CASCADE
+);
+
+CREATE TABLE BBKDictionary (
+    BBK VARCHAR(100) PRIMARY KEY
+);
+
+
+CREATE TABLE BBKAlternative (
+    sourceCode VARCHAR(100),
+    targetCode VARCHAR(100),
+    PRIMARY KEY (sourceCode, targetCode),
+    FOREIGN KEY (sourceCode) REFERENCES BBKDictionary(BBK) ON DELETE CASCADE,
+    FOREIGN KEY (targetCode) REFERENCES BBKDictionary(BBK) ON DELETE CASCADE
+);
+
+CREATE TABLE BBKMapping (
+    fullTableCode VARCHAR(100),
+    midTableCode VARCHAR(100),
+    PRIMARY KEY (fullTableCode, midTableCode),
+    FOREIGN KEY (fullTableCode) REFERENCES BBKDictionary(BBK) ON DELETE CASCADE
+);
+
+
+CREATE TABLE BBKRecord (
+    publicationId INT NOT NULL,
+    BBK VARCHAR(100) NOT NULL,
+    PRIMARY KEY (publicationId, BBK),
+    FOREIGN KEY (publicationId) REFERENCES Publication(publicationId) ON DELETE CASCADE,
+    FOREIGN KEY (BBK) REFERENCES BBKDictionary(BBK) ON DELETE CASCADE
+);
+
+CREATE TABLE OtherIndex (
+    publicationId INT NOT NULL,
+    index VARCHAR NOT NULL,
+    PRIMARY KEY (publicationId, index),
+    FOREIGN KEY (publicationId) REFERENCES Publication(publicationId) ON DELETE CASCADE
+);
+
+
+
 
 CREATE TABLE Author (
-    id SERIAL PRIMARY KEY,
-    birth_date DATE,
-    FirstName VARCHAR(100) NOT NULL,
-    LastName VARCHAR(100) NOT NULL,
-    Patronymic VARCHAR(100),
-    description TEXT
-);
-
-CREATE TABLE Publisher (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) UNIQUE NOT NULL,
-    address VARCHAR(255),
-);
-
-CREATE TABLE Book (
-    id SERIAL PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    bbk VARCHAR(50),
-    udk VARCHAR(50),
-    isbn VARCHAR(20) UNIQUE,
-    publication_year INT,
-    publisher_id INT REFERENCES Publisher(id) ON DELETE SET NULL
+    authorId   SERIAL PRIMARY KEY,
+    birthDate  DATE NOT NULL,
+    firstName  VARCHAR(50) NOT NULL,
+    lastName   VARCHAR(50) NOT NULL,
+    patronymic VARCHAR(50),
+    UNIQUE (birthDate, firstName, lastName)
 );
 
 CREATE TABLE BookAuthor (
-    id SERIAL PRIMARY KEY,
-    book_id INT NOT NULL REFERENCES Book(id) ON DELETE CASCADE,
-    author_id INT NOT NULL REFERENCES Author(id) ON DELETE CASCADE,
-    UNIQUE(book_id, author_id)
+    publicationId INT NOT NULL,
+    authorId      INT NOT NULL,
+    PRIMARY KEY (publicationId, authorId),
+    FOREIGN KEY (publicationId) REFERENCES Publication(publicationId) ON DELETE CASCADE,
+    FOREIGN KEY (authorId) REFERENCES Author(authorId) ON DELETE CASCADE
 );
 
 CREATE TABLE LibraryBuilding (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) UNIQUE NOT NULL,
-    address VARCHAR(255) NOT NULL,
-    description TEXT
+    libraryBuildingId SERIAL PRIMARY KEY,
+    address           VARCHAR NOT NULL UNIQUE,
+    description       VARCHAR
 );
 
-CREATE TABLE Copy (
-    id SERIAL PRIMARY KEY,
-    inventory_number VARCHAR(50) UNIQUE NOT NULL,
-    acquisition_date DATE,
-    book_id INT NOT NULL REFERENCES Book(id) ON DELETE CASCADE,
-    building_id INT NOT NULL REFERENCES LibraryBuilding(id) ON DELETE CASCADE
+CREATE TABLE Librarian (
+    librarianId   SERIAL PRIMARY KEY,
+    staffNum      VARCHAR(10) NOT NULL UNIQUE,
+    email         VARCHAR(254) NOT NULL UNIQUE,
+    passwordHash  VARCHAR(32) NOT NULL,
+    firstName     VARCHAR(100) NOT NULL,
+    lastName      VARCHAR(100) NOT NULL,
+    patronymic    VARCHAR(100)
 );
 
 CREATE TABLE Reader (
-    id SERIAL PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    library_card_number VARCHAR(50) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    FirstName VARCHAR(100) NOT NULL,
-    LastName VARCHAR(100) NOT NULL,
-    Patronymic VARCHAR(100),
-    Address VARCHAR(255)
+    readerId     SERIAL PRIMARY KEY,
+    email        VARCHAR(254) NOT NULL UNIQUE,
+    libraryCard  VARCHAR(12) NOT NULL UNIQUE,
+    passportSeries VARCHAR(4) NOT NULL,
+    passportNumber VARCHAR(6) NOT NULL,
+    firstName    VARCHAR(100) NOT NULL,
+    lastName     VARCHAR(100) NOT NULL,
+    patronymic   VARCHAR(100),
+    passwordHash VARCHAR(128) NOT NULL,
+    UNIQUE (passportSeries, passportNumber)
 );
 
-CREATE TABLE Reservation (
-    id SERIAL PRIMARY KEY,
-    reservation_date TIMESTAMP NOT NULL DEFAULT NOW(),
-    expiry_date TIMESTAMP NOT NULL,
-    reader_id INT NOT NULL REFERENCES Reader(id) ON DELETE CASCADE,
-    copy_id INT NOT NULL REFERENCES Copy(id) ON DELETE CASCADE,
-    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed'))
+CREATE TABLE Copy (
+    copyId         SERIAL PRIMARY KEY,
+    inventoryNumber VARCHAR(13) NOT NULL UNIQUE,
+    publicationId   INT NOT NULL,
+    buildingId      INT NOT NULL,
+    readerId        INT,
+    librarianId     INT,
+    startDate       DATE,
+    expiryDate      DATE,
+    FOREIGN KEY (publicationId) REFERENCES Publication(publicationId) ON DELETE CASCADE,
+    FOREIGN KEY (buildingId) REFERENCES LibraryBuilding(libraryBuildingId) ON DELETE CASCADE,
+    FOREIGN KEY (readerId) REFERENCES Reader(readerId) ON DELETE SET NULL,
+    FOREIGN KEY (librarianId) REFERENCES Librarian(librarianId) ON DELETE SET NULL
 );
 
-CREATE TABLE Loan (
-    id SERIAL PRIMARY KEY,
-    loan_date DATE NOT NULL,
-    due_date DATE NOT NULL,
-    return_date DATE,
-    reader_id INT NOT NULL REFERENCES Reader(id) ON DELETE CASCADE,
-    copy_id INT NOT NULL REFERENCES Copy(id) ON DELETE CASCADE,
-    issued_by_id INT REFERENCES Librarian(id) ON DELETE SET NULL,
-    returned_by_id INT REFERENCES Librarian(id) ON DELETE SET NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'returned'))
-);
 
-CREATE INDEX idx_book_title ON Book(title);
-CREATE INDEX idx_book_bbk ON Book(bbk);
-CREATE INDEX idx_book_udk ON Book(udk);
-CREATE INDEX idx_book_isbn ON Book(isbn);
-CREATE INDEX idx_book_year ON Book(publication_year);
-CREATE INDEX idx_author_name ON Author(LastName, FirstName);
-CREATE INDEX idx_publisher_name ON Publisher(name);
-CREATE INDEX idx_copy_book ON Copy(book_id);
-CREATE INDEX idx_copy_building ON Copy(building_id);
-CREATE INDEX idx_reservation_copy_status ON Reservation(copy_id, status);
-CREATE INDEX idx_loan_copy_status ON Loan(copy_id, status);
 
-INSERT INTO Librarian (email, password_hash, FirstName, LastName, Patronymic, Is_admin) VALUES
-('admin@library.ru', 'hashed_password_1', 'Иван', 'Иванов', 'Иванович', true),
-('librarian1@library.ru', 'hashed_password_2', 'Мария', 'Петрова', 'Сергеевна', false),
-('librarian2@library.ru', 'hashed_password_3', 'Алексей', 'Смирнов', 'Викторович', false);
+INSERT INTO Author (birthDate, firstName, lastName, patronymic) VALUES
+('1956-09-16', 'Еськов', 'Кирилл', 'Юрьевич');
 
-INSERT INTO LibraryBuilding (name, Address, description) VALUES
-('Главное здание', 'ул. Университетская, 1, г. Москва', 'Основной корпус, отдел художественной литературы'),
-('Научная библиотека', 'пр. Ленина, 22, г. Москва', 'Научный фонд, редкие книги'),
-('Детский отдел', 'ул. Пушкина, 10, г. Москва', 'Литература для детей и подростков');
+INSERT INTO LibraryBuilding (address, description) VALUES
+('г. Москва, ул. Б. Дмитровка, д. 5/6, стр. 7', 'Библиотека номер 179'),
+('г. Москва, ул. Вавилова, д. 86', 'Библиотека номер 57');
 
-INSERT INTO Publisher (name, Address) VALUES
-('Эксмо', 'г. Москва, ул. Клары Цеткин, 33',),
-('АСТ', 'г. Москва, ул. Правды, 15'),
-('Наука', 'г. Москва, ул. Профсоюзная, 90'),
-('Oxford University Press', 'Oxford, UK');
+INSERT INTO Librarian (staffNum, email, passwordHash, firstName, lastName, patronymic) VALUES
+('LIB0000001', 'kligunov@179.ru', 'hash_kligunov', 'Клигунов', 'Кирилл', 'Дмитриевич'),
+('LIB0000002', 'lisitsyn@179.ru', 'hash_lisitsyn', 'Лисицын', 'Дмитрий', 'Максимович');
 
-INSERT INTO Author (birth_date, FirstName, LastName, Patronymic, description) VALUES
-('1828-09-09', 'Лев', 'Толстой', 'Николаевич', 'Великий русский писатель'),
-('1821-11-11', 'Фёдор', 'Достоевский', 'Михайлович', 'Русский писатель, мыслитель'),
-('1903-06-25', 'Джордж', 'Оруэлл', '', 'Английский писатель и публицист'),
-('1891-05-15', 'Михаил', 'Булгаков', 'Афанасьевич', 'Русский писатель, драматург'),
-('1775-12-16', 'Джейн', 'Остин', '', 'Английская писательница');
+INSERT INTO Reader (email, libraryCard, passportSeries, passportNumber, firstName, lastName, patronymic, passwordHash) VALUES
+('reader1@mail.ru', '000000000001', '1944', '111111', 'Семён', 'Георгиевич', 'Чайкин', 'hash_reader1'),
+('reader2@mail.ru', '000000000002', '1943', '111112', 'Козинец', 'Дмитрий', 'Сергеевич', 'hash_reader2');
 
-INSERT INTO Book (title, bbk, udc, isbn, publication_year, publisher_id) VALUES
-('Война и мир', '84(2Рос)1', '821.161.1', '978-5-699-12345-6', 2008, (SELECT id FROM Publisher WHERE name='Эксмо')),
-('Преступление и наказание', '84(2Рос)1', '821.161.1', '978-5-17-12345-7', 2015, (SELECT id FROM Publisher WHERE name='АСТ')),
-('1984', '84(4Вел)', '821.111', '978-5-699-98765-4', 2010, (SELECT id FROM Publisher WHERE name='Эксмо')),
-('Мастер и Маргарита', '84(2Рос)1', '821.161.1', '978-5-17-98765-4', 2012, (SELECT id FROM Publisher WHERE name='АСТ')),
-('Гордость и предубеждение', '84(4Вел)', '821.111', '978-0-19-953556-9', 2006, (SELECT id FROM Publisher WHERE name='Oxford University Press'));
+INSERT INTO Publication (title, publicationYear) VALUES
+('Удивительная палеонтология: история Земли и жизни на ней', 2008),
+('Удивительная палеонтология: история Земли и жизни на ней', 2008);
 
-INSERT INTO BookAuthor (book_id, author_id) VALUES
-((SELECT id FROM Book WHERE isbn='978-5-699-12345-6'), (SELECT id FROM Author WHERE LastName='Толстой')),
-((SELECT id FROM Book WHERE isbn='978-5-17-12345-7'), (SELECT id FROM Author WHERE LastName='Достоевский')),
-((SELECT id FROM Book WHERE isbn='978-5-699-98765-4'), (SELECT id FROM Author WHERE LastName='Оруэлл')),
-((SELECT id FROM Book WHERE isbn='978-5-17-98765-4'), (SELECT id FROM Author WHERE LastName='Булгаков')),
-((SELECT id FROM Book WHERE isbn='978-0-19-953556-9'), (SELECT id FROM Author WHERE LastName='Остин'));
+INSERT INTO ISBN (ISBN, publicationId) VALUES
+('978-5-93196-711-0', 1),
+('978-5-91921-129-7', 2);
 
-INSERT INTO Copy (inventory_number, acquisition_date, book_id, building_id) VALUES
-('INV-001', '2020-01-15', (SELECT id FROM Book WHERE isbn='978-5-699-12345-6'), (SELECT id FROM LibraryBuilding WHERE name='Главное здание')),
-('INV-002', '2020-02-10', (SELECT id FROM Book WHERE isbn='978-5-699-12345-6'), (SELECT id FROM LibraryBuilding WHERE name='Научная библиотека')),
-('INV-003', '2021-03-20', (SELECT id FROM Book WHERE isbn='978-5-17-12345-7'), (SELECT id FROM LibraryBuilding WHERE name='Главное здание')),
-('INV-004', '2021-04-05', (SELECT id FROM Book WHERE isbn='978-5-17-12345-7'), (SELECT id FROM LibraryBuilding WHERE name='Детский отдел')),
-('INV-005', '2022-05-12', (SELECT id FROM Book WHERE isbn='978-5-699-98765-4'), (SELECT id FROM LibraryBuilding WHERE name='Научная библиотека')),
-('INV-006', '2022-06-18', (SELECT id FROM Book WHERE isbn='978-5-699-98765-4'), (SELECT id FROM LibraryBuilding WHERE name='Главное здание')),
-('INV-007', '2019-07-22', (SELECT id FROM Book WHERE isbn='978-5-17-98765-4'), (SELECT id FROM LibraryBuilding WHERE name='Главное здание')),
-('INV-008', '2019-08-30', (SELECT id FROM Book WHERE isbn='978-5-17-98765-4'), (SELECT id FROM LibraryBuilding WHERE name='Детский отдел')),
-('INV-009', '2020-09-14', (SELECT id FROM Book WHERE isbn='978-0-19-953556-9'), (SELECT id FROM LibraryBuilding WHERE name='Научная библиотека')),
-('INV-010', '2020-10-25', (SELECT id FROM Book WHERE isbn='978-0-19-953556-9'), (SELECT id FROM LibraryBuilding WHERE name='Главное здание'));
+INSERT INTO ISBNOther (publicationId, ISBN) VALUES
+(2, '978-5-93196-711-0');
 
--- Читатели
-INSERT INTO Reader (email, library_card_number, password_hash, FirstName, LastName, Patronymic, Address) VALUES
-('reader1@mail.ru', 'LIB-001', 'hashed_reader1', 'Ольга', 'Кузнецова', 'Алексеевна', 'г. Москва, ул. Ленина, 10, кв. 5'),
-('reader2@mail.ru', 'LIB-002', 'hashed_reader2', 'Дмитрий', 'Соколов', 'Игоревич', 'г. Москва, ул. Мира, 15, кв. 78'),
-('reader3@mail.ru', 'LIB-003', 'hashed_reader3', 'Елена', 'Волкова', 'Петровна', 'г. Москва, ул. Горького, 5, кв. 12');
+INSERT INTO OtherIndex (publicationId, index) VALUES
+(2, '56');
+
+
+INSERT INTO BBKDictionary (BBK) VALUES
+--книги на комбинаторику:
+('В181'),
+
+('В181.1'),
+
+('В181.11'),
+
+('В181.12'),
+
+('В181.13'),
+
+('В181.14'),
+
+('В181.19'),
+
+--про лидары:
+
+('З81'), 
+
+('З859'),
+
+('З956-5'),
+
+--Еськов:
+('Е1');
+
+
+
+INSERT INTO BBKRecord (publicationId, BBK) VALUES
+(1, 'Е1'),
+(2, 'Е1');
+
+INSERT INTO BookAuthor (publicationId, authorId) VALUES
+(1, 1),
+(2, 1);
+
+INSERT INTO Copy (inventoryNumber, publicationId, buildingId, readerId, librarianId, startDate, expiryDate) VALUES
+('INV0000000001', 1, 1, NULL, NULL, NULL, NULL),
+('INV0000000002', 1, 1, NULL, NULL, NULL, NULL),
+('INV0000000003', 1, 1, NULL, NULL, NULL, NULL);
+
+
+INSERT INTO BBKAlternative (sourceCode, targetCode) VALUES
+--пример с лидарами
+('З956-5', 'З859'), 
+
+('З859', 'З81');
+
+
+
+
+
+INSERT INTO BBKMapping (fullTableCode, midTableCode) VALUES
+--книги на комбинаторику:
+('В181', '22.181'),
+
+('В181.1', '22.181.1'),
+
+('В181.11', '22.181.11'),
+
+('В181.12', '22.181.12'),
+
+('В181.13', '22.181.13'),
+
+('В181.14', '22.181.14'),
+
+('В181.19', '22.181.19'),
+
+--Про лидары:
+
+('З81', '32.81'), 
+
+('З859', '32.859'),
+
+('З956-5', '32.956-5'),
+
+--Еськов:
+('Е1', '28.1');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--функции, процедуры
+
+
+CREATE OR REPLACE FUNCTION createReader(
+    newEmail VARCHAR(254),
+    newPasswordHash VARCHAR(128),
+    newFirstName VARCHAR(100),
+    newLastName VARCHAR(100),
+    newPassportSeries VARCHAR(4),
+    newPassportNumber VARCHAR(6),
+    newPatronymic VARCHAR(100) DEFAULT NULL
+)
+RETURNS TABLE(readerId INTEGER, libraryCard VARCHAR(12))
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    lastCard VARCHAR(12);
+    nextNum INTEGER; -- читательский номер (число) после инкремента
+    prefix CONSTANT VARCHAR(3) := 'LIB';
+    newCard VARCHAR(12); -- читательский номер, который получит новый читатель
+    newId INTEGER;
+BEGIN
+
+    -- Проверка на существующий email
+    IF EXISTS (SELECT 1 FROM Reader WHERE email = newEmail) THEN
+        RAISE EXCEPTION 'Email already exists' USING ERRCODE = 'EM001';
+    END IF;
+
+    -- Проверка на существующий паспорт
+    IF EXISTS (SELECT 1 FROM Reader 
+               WHERE passportSeries = newPassportSeries 
+                 AND passportNumber = newPassportNumber) THEN
+        RAISE EXCEPTION 'Passport already exists' USING ERRCODE = 'PS001'; 
+    END IF;
+
+
+
+    -- Берем самый последний выданный читательский билет
+    SELECT Reader.libraryCard INTO lastCard
+    FROM Reader
+    ORDER BY Reader.readerId DESC
+    LIMIT 1;
+
+    IF lastCard IS NULL THEN
+        -- Если читателей нет в базе
+        nextNum := 1;
+    ELSE
+        nextNum := CAST(substring(lastCard FROM 4) AS INTEGER) + 1;
+    END IF;
+
+    newCard := 'LIB' || nextNum::TEXT;
+    
+
+    INSERT INTO Reader (email, libraryCard, passwordHash, firstName, lastName, patronymic, passportSeries, passportNumber)
+    VALUES (newEmail, newCard, newPasswordHash, newFirstName, newLastName, newPatronymic, newPassportSeries, newPassportNumber)
+    RETURNING Reader.readerId INTO newId;
+
+    RETURN QUERY SELECT newId, newCard;
+END;
+$$;
+
+
+
+
+CREATE OR REPLACE FUNCTION checkReaderCredentials(
+    p_email VARCHAR(254),
+    p_password VARCHAR(32)
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 
+        FROM Reader 
+        WHERE email = p_email AND passwordHash = p_password
+    );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION checkLibrarianCredentials(
+    p_email VARCHAR(254),
+    p_password VARCHAR(32)
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 
+        FROM Librarian 
+        WHERE email = p_email AND passwordHash = p_password
+    );
+END;
+$$;
+

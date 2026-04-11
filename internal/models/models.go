@@ -15,3 +15,15 @@ type DBConfig struct {
 	DBName string
 	DBHost string
 }
+
+type Reader struct{
+    ReaderId int
+    Email string
+    LibraryCard string
+    PassportSeries string
+    PassportNumber string
+    FirstName string
+    LastName string
+    Patronymic string
+    PasswordHash string
+};

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Поиск книг</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+        }
+        .search-form {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 6px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 8px 16px;
+            background: #2c3e50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #1abc9c;
+        }
+    </style>
+</head>
+<body>
+    <div class="search-form">
+        <h2>Поиск книги</h2>
+        <form action="/searchBook" method="GET">
+            <div class="form-group">
+                <label>ISBN</label>
+                <input type="text" name="isbn" placeholder="978-5-93196-711-0">
+            </div>
+            <div class="form-group">
+                <label>Автор</label>
+                <input type="text" name="author" placeholder="Фамилия И.О.">
+            </div>
+            <div class="form-group">
+                <label>ББК</label>
+                <input type="text" name="bbk" placeholder="например, Е1">
+            </div>
+            <div class="form-group">
+                <label>Название</label>
+                <input type="text" name="title" placeholder="Название книги">
+            </div>
+            <div class="form-group">
+                <label>Год издания</label>
+                <input type="text" name="year" placeholder="2008">
+            </div>
+            <div class="form-group">
+                <label>Прочие индексы</label>
+                <input type="text" name="other_index" placeholder="можно УДК, а можно авторский знак">
+            </div>
+            <button type="submit">Искать</button>
+        </form>
+    </div>
+</body>
+</html>

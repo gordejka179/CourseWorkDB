@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Авторизация</title>
+    <style>
+        label, input, button, select {
+            display: block;
+            margin-bottom: 10px;
+        }
+        input, button, select {
+            padding: 4px;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+        .success {
+            color: green;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Вход в систему</h2>
+    <form id="loginForm">
+        <label>Почта:
+            <input type="email" name="username" required>
+        </label>
+        <label>Пароль:
+            <input type="password" name="password" required>
+        </label>
+        <label>Роль:
+            <select name="role" required>
+                <option value="reader">Читатель</option>
+                <option value="librarian">Библиотекарь</option>
+            </select>
+        </label>
+        <button type="submit">Войти</button>
+    </form>
+    <div id="message"></div>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const messageDiv = document.getElementById('message');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const data = {
+                username: formData.get('username'),
+                password: formData.get('password'),
+                role: formData.get('role')
+            };
+
+            try {
+                const response = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    messageDiv.textContent = 'Вход выполнен успешно';
+                    messageDiv.className = 'success';
+                    window.location.href = '/home';
+                } else {
+                    const errorData = await response.json();
+                    messageDiv.textContent = errorData.error || 'Ошибка входа';
+                    messageDiv.className = 'error';
+                }
+            } catch (err) {
+                messageDiv.textContent = 'Ошибка соединения с сервером';
+                messageDiv.className = 'error';
+            }
+        });
+    </script>
+</body>
+</html>

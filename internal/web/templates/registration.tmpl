@@ -1,4 +1,3 @@
-{{ define "registration" }}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -12,28 +11,85 @@
         input, button {
             padding: 4px;
         }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+        .success {
+            color: green;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
     <h2>Регистрация</h2>
-    <form method="post" action="/register">
+    <form id="registrationForm">
         <label>Фамилия:
-            <input type="text" name="last_name" required>
+            <input type="text" name="lastname" required>
         </label>
         <label>Имя:
-            <input type="text" name="first_name" required>
+            <input type="text" name="firstname" required>
         </label>
         <label>Отчество:
-            <input type="text" name="patronymic">
+            <input type="text" name="patronimyc">
         </label>
         <label>Почта:
             <input type="email" name="email" required>
         </label>
-        <label>Адрес:
-            <input type="text" name="address" required>
+        <label>Серия паспорта:
+            <input type="text" name="passportseries" required>
+        </label>
+        <label>Номер паспорта:
+            <input type="text" name="passportnumber" required>
+        </label>
+        <label>Пароль:
+            <input type="password" name="password" required>
         </label>
         <button type="submit">Зарегистрироваться</button>
     </form>
+    <div id="message"></div>
+
+    <script>
+        const form = document.getElementById('registrationForm');
+        const messageDiv = document.getElementById('message');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const data = {
+                lastname: formData.get('lastname'),
+                firstname: formData.get('firstname'),
+                patronimyc: formData.get('patronimyc') || '',
+                email: formData.get('email'),
+                passportseries: formData.get('passportseries'),
+                passportnumber: formData.get('passportnumber'),
+                password: formData.get('password')
+            };
+
+            try {
+                const response = await fetch('/auth/registration', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    messageDiv.textContent = 'Регистрация успешна';
+                    messageDiv.className = 'success';
+                    window.location.href = '/auth/login';
+                } else {
+                    const errorData = await response.json();
+                    messageDiv.textContent = errorData.error || 'Ошибка регистрации';
+                    messageDiv.className = 'error';
+                }
+            } catch (err) {
+                messageDiv.textContent = 'Ошибка соединения с сервером';
+                messageDiv.className = 'error';
+            }
+        });
+    </script>
 </body>
 </html>
-{{ end }}

@@ -46,3 +46,9 @@ func NewPostgresDB(cfg models.DBConfig) (*sql.DB, error) {
     log.Println("PostgreSQL connected")
     return db, nil
 }
+
+
+
+
+
+

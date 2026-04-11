@@ -15,18 +15,23 @@ func NewUserHandler(service *usecase.Service) *Handler {
 
 func (h *Handler) InitRoutes() *gin.Engine {
 	router := gin.New()
-	router.LoadHTMLGlob("web/templates/*")
+	router.LoadHTMLGlob("internal/web/templates/*")
 	router.Static("/images", "web/static/images")
 	router.Static("/styles", "web/static/styles")
 	router.Static("/scripts", "web/static/scripts")
 
 	auth := router.Group("/auth")
 	{
-		auth.GET("/login", h.signIn)
-		auth.POST("/login", h.signIn)
 		auth.GET("/registration", h.signUp)
 		auth.POST("/registration", h.signUp)
+		auth.GET("/login", h.signIn)
+		auth.POST("/login", h.signIn)
 	}
+
+
+	router.GET("/home", h.home)
+	router.GET("/search", h.search)
+	
 
 	view := router.Group("/view")
 	view.Use(authMiddleware())
