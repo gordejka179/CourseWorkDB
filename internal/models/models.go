@@ -26,4 +26,31 @@ type Reader struct{
     LastName string
     Patronymic string
     PasswordHash string
-};
+}
+
+type Author struct {
+    FirstName  string
+    LastName   string
+    Patronymic string
+}
+
+type Publication struct {
+    ID int
+    Title string
+    PublicationYear int
+    Authors []Author
+    ISBN string
+    BBKs []string
+    OtherIndexes []string
+}
+
+type Copy struct {
+    CopyId int 
+    InventoryNumber string 
+    PublicationId int
+    BuildingId int
+    ReaderId int
+    LibrarianId int
+    Address string
+    Description string
+}

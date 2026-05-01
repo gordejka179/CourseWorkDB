@@ -16,10 +16,8 @@ func NewUserHandler(service *usecase.Service) *Handler {
 func (h *Handler) InitRoutes() *gin.Engine {
 	router := gin.New()
 	router.LoadHTMLGlob("internal/web/templates/*")
-	router.Static("/images", "web/static/images")
-	router.Static("/styles", "web/static/styles")
-	router.Static("/scripts", "web/static/scripts")
-
+	router.Static("/static", "./internal/web/static")
+	
 	auth := router.Group("/auth")
 	{
 		auth.GET("/registration", h.signUp)
@@ -31,6 +29,8 @@ func (h *Handler) InitRoutes() *gin.Engine {
 
 	router.GET("/home", h.home)
 	router.GET("/search", h.search)
+
+	router.POST("/searchBook", h.searchBook)
 	
 
 	view := router.Group("/view")

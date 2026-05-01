@@ -137,11 +137,15 @@ CREATE TABLE Copy (
 
 
 INSERT INTO Author (birthDate, firstName, lastName, patronymic) VALUES
-('1956-09-16', 'Еськов', 'Кирилл', 'Юрьевич');
+('1956-09-16', 'Кирилл', 'Еськов', 'Юрьевич'),
+
+--лидары:
+('1970-09-16', 'Иван', 'Иванов', 'Иванович'),
+('1971-09-16', 'Пётр', 'Петров', NULL);
 
 INSERT INTO LibraryBuilding (address, description) VALUES
 ('г. Москва, ул. Б. Дмитровка, д. 5/6, стр. 7', 'Библиотека номер 179'),
-('г. Москва, ул. Вавилова, д. 86', 'Библиотека номер 57');
+('г. Москва, М. Знаменский пер., д. 7/10, стр. 5', 'Библиотека номер 57');
 
 INSERT INTO Librarian (staffNum, email, passwordHash, firstName, lastName, patronymic) VALUES
 ('LIB0000001', 'kligunov@179.ru', 'hash_kligunov', 'Клигунов', 'Кирилл', 'Дмитриевич'),
@@ -152,18 +156,29 @@ INSERT INTO Reader (email, libraryCard, passportSeries, passportNumber, firstNam
 ('reader2@mail.ru', '000000000002', '1943', '111112', 'Козинец', 'Дмитрий', 'Сергеевич', 'hash_reader2');
 
 INSERT INTO Publication (title, publicationYear) VALUES
+--Еськов:
 ('Удивительная палеонтология: история Земли и жизни на ней', 2008),
-('Удивительная палеонтология: история Земли и жизни на ней', 2008);
+('Удивительная палеонтология: история Земли и жизни на ней', 2014),
+
+--лидары (выдуманный пример)
+('Алгоритмы, применяемые в лидарах', 2020);
 
 INSERT INTO ISBN (ISBN, publicationId) VALUES
+--Еськов:
 ('978-5-93196-711-0', 1),
-('978-5-91921-129-7', 2);
+('978-5-91921-129-7', 2),
+
+--лидары (выдуманный пример)
+('978-5-99999-999-9', 3),
+('978-5-99999-999-0', 3);
+
 
 INSERT INTO ISBNOther (publicationId, ISBN) VALUES
 (2, '978-5-93196-711-0');
 
 INSERT INTO OtherIndex (publicationId, index) VALUES
-(2, '56');
+(2, '56'),
+(2, ' ГРНТИ');
 
 
 INSERT INTO BBKDictionary (BBK) VALUES
@@ -197,23 +212,33 @@ INSERT INTO BBKDictionary (BBK) VALUES
 
 INSERT INTO BBKRecord (publicationId, BBK) VALUES
 (1, 'Е1'),
-(2, 'Е1');
+(2, 'Е1'),
+
+--про лидары:
+(3, 'З81');
 
 INSERT INTO BookAuthor (publicationId, authorId) VALUES
 (1, 1),
-(2, 1);
+(2, 1),
+(3, 2),
+(3, 3),
+
+(2, 3);
 
 INSERT INTO Copy (inventoryNumber, publicationId, buildingId, readerId, librarianId, startDate, expiryDate) VALUES
 ('INV0000000001', 1, 1, NULL, NULL, NULL, NULL),
 ('INV0000000002', 1, 1, NULL, NULL, NULL, NULL),
-('INV0000000003', 1, 1, NULL, NULL, NULL, NULL);
+('INV0000000003', 1, 1, NULL, NULL, NULL, NULL),
+('INV0000000004', 1, 2, NULL, NULL, NULL, NULL),
+('INV0000000005', 2, 2, 1, 1, NULL, NULL),
+('INV0000000006', 3, 2, NULL, NULL, NULL, NULL);
 
 
 INSERT INTO BBKAlternative (sourceCode, targetCode) VALUES
 --пример с лидарами
 ('З956-5', 'З859'), 
 
-('З859', 'З81');
+('З956-5', 'З81');
 
 
 
@@ -253,15 +278,11 @@ INSERT INTO BBKMapping (fullTableCode, midTableCode) VALUES
 
 
 
+--представления
 
 
 
-
-
-
-
-
-
+--индексы
 
 
 
@@ -363,4 +384,95 @@ BEGIN
     );
 END;
 $$;
+
+
+
+
+CREATE OR REPLACE FUNCTION search_publications_by_isbn(p_isbn VARCHAR)
+RETURNS TABLE(
+    publicationId INT,
+    title VARCHAR,
+    publicationYear INT,
+    isbn TEXT,
+    BBKs TEXT[],
+    otherIndexes TEXT[],
+    authors TEXT[]
+)
+LANGUAGE sql
+AS $$
+
+    --находим издание с нужным isbn
+    WITH main_pub AS(
+        SELECT publicationId, isbn
+        FROM ISBN
+        WHERE ISBN = p_isbn
+    ),
+
+    --для найденного издания ищем все isbn, с которыми это издание связано
+    other_isbn_to_publication AS (
+        SELECT isbn_other.ISBN
+        FROM ISBNOther isbn_other
+        JOIN main_pub mp ON mp.publicationId = isbn_other.PublicationId
+    ),
+
+    --для номеров isbn из other_isbn_to_publication ищем, какие к ним относятся издания
+    other_publications AS (
+        SELECT isbn.publicationId, isbn.ISBN
+        FROM ISBN isbn
+        JOIN other_isbn_to_publication oisbn ON isbn.ISBN = oisbn.ISBN
+    ),
+
+    --теперь собираем вместе все id изданий и их isbn
+    all_isbns_for_publication AS (
+        SELECT publicationId, isbn 
+        FROM main_pub
+        UNION
+        SELECT DISTINCT publicationId, ISBN FROM other_publications 
+    )
+
+    --теперь собираем информацию о всех изданиях
+    SELECT 
+        DISTINCT p.publicationId,
+        p.title,
+        p.publicationYear,
+        aip.ISBN AS isbn,
+        (SELECT array_agg(DISTINCT br.BBK) FROM BBKRecord br WHERE br.publicationId = p.publicationId) AS BBKs,
+        (SELECT array_agg(DISTINCT oi.index) FROM OtherIndex oi WHERE oi.publicationId = p.publicationId) AS OtherIndexes,
+        (SELECT array_agg(DISTINCT a.lastName || '|' || a.firstName || COALESCE('|' || a.patronymic, '|'))
+            FROM BookAuthor ba JOIN Author a ON ba.authorId = a.authorId
+            WHERE ba.publicationId = p.publicationId) AS authors
+    FROM Publication p
+    JOIN all_isbns_for_publication aip ON aip.publicationId = p.publicationId
+$$;
+
+
+--по массиву из id публикаций получаем инфу про экземпляры
+CREATE OR REPLACE FUNCTION get_copies_info_by_ids(p_ids INT[])
+RETURNS TABLE(
+    copyId INT,
+    inventoryNumber VARCHAR,
+    publicationId INT,
+    buildingId INT,
+    readerId INT,
+    librarianId INT,
+    address VARCHAR,
+    description VARCHAR
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        c.copyId, 
+        c.inventoryNumber, 
+        c.publicationId, 
+        c.buildingId,
+        c.readerId, 
+        c.librarianId,
+        lb.address, 
+        lb.description
+    FROM Copy c
+    JOIN LibraryBuilding lb ON c.buildingId = lb.libraryBuildingId
+    WHERE c.publicationId = ANY(p_ids); --функция ANY, для проверки, что совпадает хотя бы с одним значением из массива
+END;
+$$ LANGUAGE plpgsql;
+
 

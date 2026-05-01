@@ -20,10 +20,14 @@
             margin-bottom: 5px;
             font-weight: bold;
         }
-        input {
+        input[type="text"],
+        input[type="email"] {
             width: 100%;
             padding: 6px;
             box-sizing: border-box;
+        }
+        input[type="checkbox"] {
+            margin-right: 8px;
         }
         button {
             padding: 8px 16px;
@@ -35,38 +39,121 @@
         button:hover {
             background: #1abc9c;
         }
+        .results {
+            margin-top: 30px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .book-item {
+            border: 1px solid #ddd;
+            padding: 12px;
+            margin-bottom: 12px;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .book-title {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+        .loading {
+            text-align: center;
+            color: #2c3e50;
+            font-style: italic;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
     <div class="search-form">
         <h2>Поиск книги</h2>
-        <form action="/searchBook" method="GET">
+        <form id="searchForm">
             <div class="form-group">
                 <label>ISBN</label>
                 <input type="text" name="isbn" placeholder="978-5-93196-711-0">
-            </div>
-            <div class="form-group">
-                <label>Автор</label>
-                <input type="text" name="author" placeholder="Фамилия И.О.">
-            </div>
-            <div class="form-group">
-                <label>ББК</label>
-                <input type="text" name="bbk" placeholder="например, Е1">
             </div>
             <div class="form-group">
                 <label>Название</label>
                 <input type="text" name="title" placeholder="Название книги">
             </div>
             <div class="form-group">
+                <label>Авторы</label>
+                <input type="text" name="title" placeholder="Авторы">
+            </div>
+            <div class="form-group">
+                <label>ББК</label>
+                <input type="text" name="bbk" placeholder="например, Е1">
+            </div>
+            <div class="form-group">
                 <label>Год издания</label>
-                <input type="text" name="year" placeholder="2008">
+                <input type="text" name="publicationyear" placeholder="2008">
             </div>
             <div class="form-group">
                 <label>Прочие индексы</label>
-                <input type="text" name="other_index" placeholder="можно УДК, а можно авторский знак">
+                <input type="text" name="otherindex" placeholder="УДК, авторский знак">
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="alternativesearch" value="true">
+                    Альтернативный поиск
+                </label>
             </div>
             <button type="submit">Искать</button>
         </form>
     </div>
+    <div class="results" id="resultsContainer"></div>
+    <script>
+        const form = document.getElementById('searchForm');
+        const resultsDiv = document.getElementById('resultsContainer');
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            resultsDiv.innerHTML = '<div class="loading">Поиск...</div>';
+            const formData = new FormData(form);
+            const jsonData = {};
+            for (const [key, value] of formData.entries()) {
+                if (key === 'alternativesearch') {
+                    jsonData[key] = value === 'true';
+                } else {
+                    jsonData[key] = value;
+                }
+            }
+            if (!jsonData.hasOwnProperty('alternativesearch')) {
+                jsonData.alternativesearch = false;
+            }
+            try {
+                const response = await fetch('/searchBook', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(jsonData)
+                });
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `Ошибка сервера: ${response.status}`);
+                }
+                const books = await response.json();
+                renderResults(books);
+            } catch (err) {
+                resultsDiv.innerHTML = `<div class="error">Ошибка: ${err.message}</div>`;
+            }
+        });
+
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+    </script>
+<script src="/static/js/search.js"></script>
 </body>
 </html>

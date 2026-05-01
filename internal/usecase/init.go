@@ -7,6 +7,9 @@ type Repository interface {
     CreateReader(reader *models.Reader) error
     CheckReaderCredentials(email, password string) (bool, error)
     CheckLibrarianCredentials(email, password string) (success bool, err error)
+    GetPublicationsByISBN(ISBN string) ([]models.Publication, error)
+
+    GetCopiesByIDList(ids []int)([]models.Copy, error)
     
 }
 

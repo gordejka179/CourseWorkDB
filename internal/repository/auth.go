@@ -91,7 +91,6 @@ func (r *Repository) CheckReaderCredentials(email, password string) (success boo
         `SELECT checkReaderCredentials($1, $2)`,
         email, password,
     ).Scan(&isValid)
-    fmt.Println(isValid, err)
 
     if err != nil {
         return false, fmt.Errorf("Ошибка при проверке данных читателя: %w", err)
