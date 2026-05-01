@@ -27,7 +27,7 @@ type BuildingAvailability struct {
     Description string `json:"description"`
     TotalCopies int `json:"totalCopies"`
     AvailableCopies int `json:"availableCopies"`
-    AvailableInventoryNumbers []string `json:"availableInventoryNumbers"`
+    AvailableCopyIds []int `json:"availableCopyIds"`
 }
 
 type PublicationResponse struct {
@@ -109,7 +109,7 @@ func (s *Service) searchByISBN(form ParametersForm)(map[int]*PublicationResponse
             	Description: copy.Description,
             	TotalCopies: 0,
             	AvailableCopies: 0,
-            	AvailableInventoryNumbers: []string{},
+            	AvailableCopyIds: []int{},
         	}
     	}
 		
@@ -117,7 +117,7 @@ func (s *Service) searchByISBN(form ParametersForm)(map[int]*PublicationResponse
 		if (copy.ReaderId == 0 && copy.LibrarianId == 0){
 			building := pubMap[copy.PublicationId].Buildings[copy.BuildingId]
 			building.AvailableCopies += 1
-			building.AvailableInventoryNumbers = append(building.AvailableInventoryNumbers, copy.InventoryNumber)
+			building.AvailableCopyIds = append(building.AvailableCopyIds, copy.CopyId)
 		}
 	}
 

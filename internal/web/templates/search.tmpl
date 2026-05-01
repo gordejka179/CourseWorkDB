@@ -115,12 +115,17 @@
             const formData = new FormData(form);
             const jsonData = {};
             for (const [key, value] of formData.entries()) {
+                //итерируемся по форме
                 if (key === 'alternativesearch') {
+                    //если поле это чекбокс, то ставим true
                     jsonData[key] = value === 'true';
                 } else {
+                    //для всех остальных полей просто заполняем введёнными значениями
                     jsonData[key] = value;
                 }
             }
+
+            //если чекбокс не заполнен, то alternativesearch ставим на false
             if (!jsonData.hasOwnProperty('alternativesearch')) {
                 jsonData.alternativesearch = false;
             }
@@ -136,8 +141,10 @@
                     const errorData = await response.json().catch(() => ({}));
                     throw new Error(errorData.error || `Ошибка сервера: ${response.status}`);
                 }
-                const books = await response.json();
-                renderResults(books);
+                const publicationsResponse = await response.json();
+
+                //когда пришли данные, вызываем для них фукнцию, которая будет генерировать html
+                renderResults(publicationsResponse);
             } catch (err) {
                 resultsDiv.innerHTML = `<div class="error">Ошибка: ${err.message}</div>`;
             }
@@ -154,6 +161,6 @@
             });
         }
     </script>
-<script src="/static/js/search.js"></script>
+<script src="/static/js/renderResults.js"></script>
 </body>
 </html>

@@ -10,6 +10,9 @@ type Repository interface {
     GetPublicationsByISBN(ISBN string) ([]models.Publication, error)
 
     GetCopiesByIDList(ids []int)([]models.Copy, error)
+
+    ReserveCopyByEmail(email string, copyId int)(error)
+
     
 }
 

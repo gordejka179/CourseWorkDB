@@ -24,17 +24,19 @@ func (h *Handler) InitRoutes() *gin.Engine {
 		auth.POST("/registration", h.signUp)
 		auth.GET("/login", h.signIn)
 		auth.POST("/login", h.signIn)
+		auth.GET("/logout", h.signOut)		
 	}
 
 
-	router.GET("/home", h.home)
-	router.GET("/search", h.search)
-
-	router.POST("/searchBook", h.searchBook)
-	
-
-	view := router.Group("/view")
-	view.Use(authMiddleware())
+	//нужна авторизация
+	protected := router.Group("/")
+	protected.Use(authMiddleware())
+	{
+		protected.GET("/home", h.home)
+		protected.GET("/search", h.search)
+		protected.POST("/searchBook", h.searchBook)
+		protected.POST("/reserve", h.reserve)
+	}
 
 	return router
 }

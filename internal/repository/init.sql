@@ -148,8 +148,8 @@ INSERT INTO LibraryBuilding (address, description) VALUES
 ('г. Москва, М. Знаменский пер., д. 7/10, стр. 5', 'Библиотека номер 57');
 
 INSERT INTO Librarian (staffNum, email, passwordHash, firstName, lastName, patronymic) VALUES
-('LIB0000001', 'kligunov@179.ru', 'hash_kligunov', 'Клигунов', 'Кирилл', 'Дмитриевич'),
-('LIB0000002', 'lisitsyn@179.ru', 'hash_lisitsyn', 'Лисицын', 'Дмитрий', 'Максимович');
+('LIB0000001', '1@179.ru', MD5('1'), 'л', 'д', 'м'),
+('LIB0000002', 'kligunov@179.ru', MD5('1'), 'Клигунов', 'Кирилл', 'Дмитриевич');
 
 INSERT INTO Reader (email, libraryCard, passportSeries, passportNumber, firstName, lastName, patronymic, passwordHash) VALUES
 ('reader1@mail.ru', '000000000001', '1944', '111111', 'Семён', 'Георгиевич', 'Чайкин', 'hash_reader1'),
@@ -387,7 +387,7 @@ $$;
 
 
 
-
+--ищем публикации по isbn + смотрим на ISBNOther
 CREATE OR REPLACE FUNCTION search_publications_by_isbn(p_isbn VARCHAR)
 RETURNS TABLE(
     publicationId INT,
@@ -450,7 +450,6 @@ $$;
 CREATE OR REPLACE FUNCTION get_copies_info_by_ids(p_ids INT[])
 RETURNS TABLE(
     copyId INT,
-    inventoryNumber VARCHAR,
     publicationId INT,
     buildingId INT,
     readerId INT,
@@ -461,8 +460,7 @@ RETURNS TABLE(
 BEGIN
     RETURN QUERY
     SELECT 
-        c.copyId, 
-        c.inventoryNumber, 
+        c.copyId,
         c.publicationId, 
         c.buildingId,
         c.readerId, 
@@ -472,6 +470,41 @@ BEGIN
     FROM Copy c
     JOIN LibraryBuilding lb ON c.buildingId = lb.libraryBuildingId
     WHERE c.publicationId = ANY(p_ids); --функция ANY, для проверки, что совпадает хотя бы с одним значением из массива
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+--Бронирование экземпляра по id читателя и id экземпляра. Бронируем на 3 дня
+CREATE OR REPLACE FUNCTION reserveCopyByEmail(p_readerId INT, p_copyId INT)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_readerId INT;
+    v_librarianId INT;
+BEGIN
+    -- Проверяем текущее состояние экземпляра
+    SELECT readerId, librarianId INTO v_readerId, v_librarianId
+    FROM Copy
+    WHERE copyId = p_copyId;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Экземпляр с ID % не найден', p_copyId
+        USING ERRCODE = 'BK001';
+    END IF;
+
+    -- Если хотя бы один из readerId или librarianId не NULL, то экземпляр уже занят
+    IF v_readerId IS NOT NULL OR v_librarianId IS NOT NULL THEN
+        RAISE EXCEPTION 'Экземпляр уже занят (выдан или забронирован)'
+        USING ERRCODE = 'BK002';
+    END IF;
+
+    UPDATE Copy
+    SET readerId   = p_readerId,
+        startDate  = CURRENT_DATE,
+        expiryDate = CURRENT_DATE + 3
+    WHERE copyId = p_copyId;
+
+    RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql;
 

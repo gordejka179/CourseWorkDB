@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -21,6 +22,7 @@ type SearchForm struct {
 }
 
 
+//выдаём html
 func (h *Handler) search(c *gin.Context) {
 	c.HTML(http.StatusOK, "search.tmpl", gin.H{})
 }
@@ -63,7 +65,7 @@ func (h *Handler) searchBook(c *gin.Context) {
 		AdditionalSearch: searchForm.AlternativeSearch,
 	}
 
-	_, err := h.service.SearchPublications(ParametersForm)
+	pubsResponse, err := h.service.SearchPublications(ParametersForm)
 
 
 	if err != nil{
@@ -71,6 +73,44 @@ func (h *Handler) searchBook(c *gin.Context) {
         return
 	}
 
+    result := make([]gin.H, 0, len(pubsResponse))
+    for _, pub := range pubsResponse {
+        buildingsSlice := make([]gin.H, 0, len(pub.Buildings))
+
+		//меняем map из зданий на слайс
+        for _, b := range pub.Buildings {
+            buildingsSlice = append(buildingsSlice, gin.H{
+                "buildingId":                b.BuildingId,
+                "address":                   b.Address,
+                "description":               b.Description,
+                "totalCopies":               b.TotalCopies,
+                "availableCopies":           b.AvailableCopies,
+                "availableCopyIds": b.AvailableCopyIds,
+            })
+        }
+
+
+		authorStrings := make([]string, len(pub.Authors))
+
+		//из массива структур Author делаем массив строк
+		for i, a := range pub.Authors {
+    		authorStrings[i] = strings.TrimSpace(fmt.Sprintf("%s %s %s", a.LastName, a.FirstName, a.Patronymic))
+		}
+
+        item := gin.H{
+            "id":              pub.Id,
+            "title":           pub.Title,
+            "publicationyear": pub.PublicationYear,
+            "authors":         authorStrings,
+            "isbn":            pub.Isbn,
+            "bbks":            pub.BBKs,
+            "otherindexes":    pub.OtherIndexes,
+            "buildings":       buildingsSlice, //теперь тут слайс
+        }
+        result = append(result, item)
+    }
+
+	c.JSON(http.StatusOK, result)
 
 }
 

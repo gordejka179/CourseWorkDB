@@ -20,7 +20,7 @@ func (h *Handler) home(c *gin.Context) {
 
 	switch role {
     case "reader":
-        c.HTML(http.StatusOK, "home.tmpl", gin.H{
+        c.HTML(http.StatusOK, "homeReader.tmpl", gin.H{
             "role": role,
         })
     case "librarian":

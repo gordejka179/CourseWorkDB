@@ -227,4 +227,16 @@ func (h *Handler) signUp(c *gin.Context) {
 }
 
 
+//выход
+func (h *Handler) signOut(c *gin.Context) {
+    // Устанавливаем cookie с истекшим сроком действия
+    http.SetCookie(c.Writer, &http.Cookie{
+        Name:     "token",
+        Path:     "/",
+        Value:    "",
+        Expires:  time.Unix(0, 0),
+        HttpOnly: true,
+    })
 
+    c.Redirect(http.StatusSeeOther, "/auth/login")
+}

@@ -46,7 +46,6 @@ type Publication struct {
 
 type Copy struct {
     CopyId int 
-    InventoryNumber string 
     PublicationId int
     BuildingId int
     ReaderId int

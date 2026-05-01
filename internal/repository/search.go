@@ -92,7 +92,6 @@ func (r *Repository) GetCopiesByIDList(ids []int) ([]models.Copy, error) {
    query := 
      `SELECT 
     copyId,
-    inventoryNumber,
     publicationId,
     buildingId,
     COALESCE(readerId, 0) AS readerId,
@@ -112,7 +111,6 @@ func (r *Repository) GetCopiesByIDList(ids []int) ([]models.Copy, error) {
         var c models.Copy
         err := rows.Scan(
             &c.CopyId,
-            &c.InventoryNumber,
             &c.PublicationId,
             &c.BuildingId,
             &c.ReaderId,
