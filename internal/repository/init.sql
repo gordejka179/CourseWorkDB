@@ -152,8 +152,8 @@ INSERT INTO Librarian (staffNum, email, passwordHash, firstName, lastName, patro
 ('LIB0000002', 'kligunov@179.ru', MD5('1'), 'Клигунов', 'Кирилл', 'Дмитриевич');
 
 INSERT INTO Reader (email, libraryCard, passportSeries, passportNumber, firstName, lastName, patronymic, passwordHash) VALUES
-('reader1@mail.ru', '000000000001', '1944', '111111', 'Семён', 'Георгиевич', 'Чайкин', 'hash_reader1'),
-('reader2@mail.ru', '000000000002', '1943', '111112', 'Козинец', 'Дмитрий', 'Сергеевич', 'hash_reader2');
+('1@1', '000000000001', '1944', '111111', 'И', 'В', 'Г', MD5('1')),
+('reader1@mail.ru', '000000000002', '1945', '111112', 'Семён', 'Георгиевич', 'Чайкин', 'hash_reader1');
 
 INSERT INTO Publication (title, publicationYear) VALUES
 --Еськов:
@@ -481,9 +481,11 @@ RETURNS BOOLEAN AS $$
 DECLARE
     v_readerId INT;
     v_librarianId INT;
+    v_publicationId INT;
 BEGIN
     -- Проверяем текущее состояние экземпляра
-    SELECT readerId, librarianId INTO v_readerId, v_librarianId
+    SELECT readerId, librarianId, publicationId 
+    INTO v_readerId, v_librarianId, v_publicationId
     FROM Copy
     WHERE copyId = p_copyId;
 
@@ -498,6 +500,17 @@ BEGIN
         USING ERRCODE = 'BK002';
     END IF;
 
+    -- Проверка, что на то, имеет ли читатель уже имеет экземпляр этого издания (на руках или забронирован) 
+    IF EXISTS (
+        SELECT 1
+        FROM Copy
+        WHERE publicationId = v_publicationId
+          AND readerId = p_readerId
+    ) THEN
+        RAISE EXCEPTION 'Читатель уже имеет экземпляр этого издания (на руках или забронирован)'
+        USING ERRCODE = 'BK003';
+    END IF;
+
     UPDATE Copy
     SET readerId   = p_readerId,
         startDate  = CURRENT_DATE,
@@ -507,5 +520,114 @@ BEGIN
     RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql;
+
+
+--Получаем бронирования читателя по его id
+CREATE OR REPLACE FUNCTION get_current_bookings_by_readerId(p_readerId INT)
+RETURNS TABLE(
+    copyId INT,
+    inventoryNumber VARCHAR,
+    title VARCHAR,
+    publicationYear INT,
+    authors TEXT[],
+    isbns TEXT[],
+    bbks TEXT[],
+    otherIndexes TEXT[],
+    buildingId INT,
+    buildingAddress VARCHAR
+) LANGUAGE sql 
+AS $$
+    SELECT 
+        c.copyId,
+        c.inventoryNumber,
+        p.title,
+        p.publicationYear,
+        COALESCE(
+            (SELECT array_agg(DISTINCT a.lastName || '|' || a.firstName || COALESCE('|' || a.patronymic, '|'))
+             FROM BookAuthor ba 
+             JOIN Author a ON ba.authorId = a.authorId 
+             WHERE ba.publicationId = p.publicationId),
+            ARRAY[]::TEXT[]
+        ),
+        COALESCE(
+            (SELECT array_agg(DISTINCT i.isbn) FROM ISBN i WHERE i.publicationId = p.publicationId),
+            ARRAY[]::TEXT[]
+        ),
+        COALESCE(
+            (SELECT array_agg(DISTINCT br.BBK) FROM BBKRecord br WHERE br.publicationId = p.publicationId),
+            ARRAY[]::TEXT[]
+        ),
+        COALESCE(
+            (SELECT array_agg(DISTINCT oi.index) FROM OtherIndex oi WHERE oi.publicationId = p.publicationId),
+            ARRAY[]::TEXT[]
+        ),
+        lb.libraryBuildingId,
+        lb.address
+    FROM Copy c
+    JOIN Publication p ON c.publicationId = p.publicationId
+    JOIN LibraryBuilding lb ON c.buildingId = lb.libraryBuildingId
+    WHERE c.readerId = p_readerId
+$$;
+
+
+--Выдача экземляра (выдаём на 30 дней)
+CREATE OR REPLACE FUNCTION makeLoan(p_readerId INT, p_librarianId INT, p_copyId INT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_readerId INT;
+    v_librarianId INT;
+    v_expiryDate DATE;
+    v_publicationId INT;
+BEGIN
+
+    SELECT readerId, librarianId, expiryDate, publicationId
+    INTO v_readerId, v_librarianId, v_expiryDate, v_publicationId
+    FROM Copy
+    WHERE copyId = p_copyId;
+
+    --ВАЖНО:
+    --по идее, библиотекарь при выдаче будет сканировать какой-нибудь код на экземпляре
+    --и это будет означать, что экземляр есть и ещё никому не выдан (максимум забронирован)
+    --но всё равно сделаем проверки
+
+
+    -- Проверка существования экземпляра
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Экземпляр с id % не найден', p_copyId
+        USING ERRCODE = 'ML001';
+    END IF;
+
+    -- Проверка, что экземпляр не забронирован другим человеком или забронирован другим человеком, но время брони уже вышло
+    IF v_readerId IS NOT NULL AND v_readerId != p_readerId AND v_expiryDate < CURRENT_DATE THEN
+        RAISE EXCEPTION 'Экземпляр кем-то забронирован или кому-то выдан'
+        USING ERRCODE = 'ML002';
+    END IF;
+
+
+     -- Проверка, нет ли у читателя других экземпляров той же публикации на руках
+    SELECT EXISTS (
+        SELECT 1
+        FROM Copy
+        WHERE publicationId = v_publicationId
+          AND (readerId = p_readerId AND librarianId IS NOT NULL)
+    ) INTO v_hasOther;
+
+    IF v_hasOther THEN
+        RAISE SQLSTATE 'ML003' USING MESSAGE = 'У читателя на руках уже есть экземпляр этого издания';
+    END IF;
+
+    --выдача
+    UPDATE Copy
+    SET readerId   = p_readerId,
+        librarianId = p_librarianId,
+        startDate   = CURRENT_DATE,
+        expiryDate  = CURRENT_DATE + INTERVAL '30 days'
+    WHERE copyId = p_copyId;
+
+    RETURN TRUE;
+END;
+$$;
 
 

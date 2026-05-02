@@ -206,14 +206,13 @@ func (h *Handler) signUp(c *gin.Context) {
     				PassportNumber: form.PassportNumber,
 					FirstName:    form.FirstName,
 					LastName:     form.LastName,
-					Patronymic:    form.FirstName,
+					Patronymic:    form.Patronymic,
 					PasswordHash: passwordHash,
 				})
 
-
-
 			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": err})
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                return
 			}
 
 

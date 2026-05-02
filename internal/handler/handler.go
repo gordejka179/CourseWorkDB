@@ -36,6 +36,10 @@ func (h *Handler) InitRoutes() *gin.Engine {
 		protected.GET("/search", h.search)
 		protected.POST("/searchBook", h.searchBook)
 		protected.POST("/reserve", h.reserve)
+		protected.GET("/getCurrentBookings", h.getCurrentBookings)
+		protected.GET("/makeLoan", h.makeLoan)
+
+		protected.GET("/makeLoan", h.getLoanedBooks)
 	}
 
 	return router

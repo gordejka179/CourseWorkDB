@@ -34,6 +34,11 @@ type Author struct {
     Patronymic string
 }
 
+type Building struct {
+    BuildingId int
+    Address string
+}
+
 type Publication struct {
     ID int
     Title string
@@ -52,4 +57,28 @@ type Copy struct {
     LibrarianId int
     Address string
     Description string
+}
+
+type BookingInformation struct {
+    CopyId int
+    InventoryNumber string
+    Title string
+    PublicationYear int
+    Authors []Author
+    Isbns []string
+	BBKs []string
+    OtherIndexes []string
+    Building Building
+}
+
+type IssueInformation struct {
+    CopyId int
+    InventoryNumber string
+    Title string
+    PublicationYear int
+    Authors []Author
+    Isbns []string
+	BBKs []string
+    OtherIndexes []string
+    Building Building
 }

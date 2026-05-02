@@ -33,13 +33,15 @@ func (r *Repository) ReserveCopyByEmail(email string, copyID int) error {
     var success bool
     err = tx.QueryRow(`SELECT reserveCopyByEmail($1, $2)`, readerID, copyID).Scan(&success)
     if err != nil {
-        // Обработка специфических ошибок
+        // Разбор ошибок:
         if pqErr, ok := err.(*pq.Error); ok {
             switch pqErr.Code {
             case "BK001":
                 return fmt.Errorf("экземпляр книги не найден")
             case "BK002":
                 return fmt.Errorf("экземпляр книги уже кем-то забронирован или получен")
+            case "BK003":
+                return fmt.Errorf("Вы уже либо держите бронь на экземпляр этого издания или имеете экземпляр на руках")
             }
         }
         return fmt.Errorf("ошибка при бронировании: %w", err)

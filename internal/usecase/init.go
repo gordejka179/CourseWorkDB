@@ -13,7 +13,12 @@ type Repository interface {
 
     ReserveCopyByEmail(email string, copyId int)(error)
 
-    
+    GetCurrentBookingsByEmail(email string) ([]models.BookingInformation, error)
+
+    MakeLoan(emailLibrarian string, emailReader string, copyId int) error
+    GetLoanedBooks(emailReader string) ([]models.IssueInformation, error)
+
+
 }
 
 type Service struct {
@@ -40,3 +45,4 @@ func (s *Service) CheckReaderCredentials(email, password string) (success bool, 
 func (s *Service) CheckLibrarianCredentials(email, password string) (success bool, err error) {
     return s.repo.CheckLibrarianCredentials(email, password)
 }
+

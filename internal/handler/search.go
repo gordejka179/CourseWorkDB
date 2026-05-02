@@ -24,7 +24,7 @@ type SearchForm struct {
 
 //выдаём html
 func (h *Handler) search(c *gin.Context) {
-	c.HTML(http.StatusOK, "search.tmpl", gin.H{})
+	c.HTML(http.StatusOK, "searchReader.tmpl", gin.H{})
 }
 
 func (h *Handler) searchBook(c *gin.Context) {

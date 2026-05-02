@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Бронирования</title>
+    <style>
+        .booking {
+            border: 1px solid #ccc;
+            margin: 10px 0;
+            padding: 10px;
+        }
+        button {
+            margin-top: 10px;
+        }
+        input, button {
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Бронирования</h1>
+    <div>
+        <input type="email" id="email" placeholder="Введите email">
+        <button id="loadBtn">Загрузить</button>
+    </div>
+    <div id="bookings"></div>
+
+    <script>
+        const emailInput = document.getElementById('email');
+        const loadBtn = document.getElementById('loadBtn');
+        const container = document.getElementById('bookings');
+
+        loadBtn.onclick = async () => {
+            const email = emailInput.value.trim();
+            if (!email) return alert('Введите email');
+
+            container.innerHTML = 'Загрузка...';
+            try {
+                // получаем бронирования
+                const res = await fetch(`/getCurrentBookings?email=${encodeURIComponent(email)}`);
+                if (!res.ok) throw new Error(await res.text());
+                const bookings = await res.json();
+
+                if (!bookings.length) {
+                    container.innerHTML = '<p>Нет бронирований</p>';
+                    return;
+                }
+
+                let html = '';
+                for (const b of bookings) {
+                    // авторы через запятую
+                    const authors = b.Authors.map(a => `${a.LastName} ${a.FirstName} ${a.Patronymic || ''}`.trim()).join(', ');
+                    // ISBN, другие индексы через запятую
+                    const isbns = b.Isbns?.join(', ') || '';
+                    const other = b.OtherIndexes?.join(', ') || '';
+                    // ББК через +
+                    const bbks = b.BBKs?.join(' + ') || '';
+
+                    html += `
+                        <div class="booking" data-copyid="${b.CopyId}">
+                            <p><strong>Инв. номер:</strong> ${b.InventoryNumber}</p>
+                            <p><strong>Название:</strong> ${b.Title} (${b.PublicationYear})</p>
+                            <p><strong>Авторы:</strong> ${authors}</p>
+                            <p><strong>ISBN:</strong> ${isbns}</p>
+                            <p><strong>ББК:</strong> ${bbks}</p>
+                            <p><strong>Другие индексы:</strong> ${other}</p>
+                            <p><strong>Здание:</strong> ${b.Building?.Address || ''}</p>
+                            <button class="issue-btn" data-copyid="${b.CopyId}">Выдать</button>
+                        </div>
+                    `;
+                }
+                container.innerHTML = html;
+
+                // назначаем обработчики на кнопки "Выдать"
+                document.querySelectorAll('.issue-btn').forEach(btn => {
+                    btn.onclick = async (e) => {
+                        const copyId = btn.dataset.copyid;
+                        const emailVal = emailInput.value.trim();
+                        btn.disabled = true;
+                        btn.textContent = '...';
+                        try {
+                            const resp = await fetch('/makeLoan', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ copyId: parseInt(copyId), email: emailVal })
+                            });
+                            if (!resp.ok) throw new Error(await resp.text());
+                            alert('Выдано!');
+                            // удаляем карточку
+                            btn.closest('.booking').remove();
+                            if (container.children.length === 0) container.innerHTML = '<p>Нет бронирований</p>';
+                        } catch (err) {
+                            alert('Ошибка: ' + err.message);
+                        } finally {
+                            btn.disabled = false;
+                            btn.textContent = 'Выдать';
+                        }
+                    };
+                });
+            } catch (err) {
+                container.innerHTML = `<p style="color:red">Ошибка: ${err.message}</p>`;
+            }
+        };
+    </script>
+</body>
+</html>

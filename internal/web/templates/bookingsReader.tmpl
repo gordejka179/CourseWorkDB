@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Бронирования</title>
+    <style>
+        .booking {
+            border: 1px solid #ccc;
+            margin: 10px;
+            padding: 10px;
+        }
+
+    </style>
+</head>
+<body>
+    <h1>Текущие бронирования</h1>
+    {{range .}}
+    <div class="booking">
+        <p><strong>Название:</strong> {{.Title}}</p>
+        <p><strong>Год издания:</strong> {{.PublicationYear}}</p>
+        
+        <p><strong>Авторы:</strong>
+            {{range $i, $a := .Authors}}
+                {{if $i}}, {{end}}{{ $a.LastName }} {{ $a.FirstName }} {{ $a.Patronymic }}
+            {{end}}
+        </p>
+
+        <p><strong>ISBN:</strong>
+            {{range $i, $isbn := .Isbns}}
+                {{if $i}}, {{end}}{{ $isbn }}
+            {{end}}
+        </p>
+
+        <p><strong>ББК:</strong>
+            {{range $i, $bbk := .BBKs}}
+                {{if $i}} + {{end}}{{ $bbk }}
+            {{end}}
+        </p>
+
+        <p><strong>Другие индексы:</strong>
+            {{range $i, $idx := .OtherIndexes}}
+                {{if $i}}, {{end}}{{ $idx }}
+            {{end}}
+        </p>
+        <p><strong>Здание:</strong> {{.Building.Address}}</p>
+
+    </div>
+    {{end}}
+</body>
+</html>

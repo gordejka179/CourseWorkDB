@@ -10,6 +10,14 @@ function renderResults(publications) {
     publications.forEach(pub => {
         const authors = pub.authors ? pub.authors.join(', ') : ''; //превращаем массив в одну строку, разделяя запятой авторов
         const isbn = pub.isbn || '';
+        let bbksString = '';
+        if (pub.bbks) {
+            if (Array.isArray(pub.bbks)) {
+                bbksString = pub.bbks.join(' + ');
+            } else {
+                bbksString = pub.bbks;
+            }
+        }
         html += `
             <div class="publication-item" data-pub-id="${pub.id}">
                 <div class="book-title" style="cursor:pointer; color:#2c3e50;">
@@ -17,6 +25,7 @@ function renderResults(publications) {
                 </div>
                 <div>Авторы: ${escapeHtml(authors)}</div>
                 <div>ISBN: ${escapeHtml(isbn)}</div>
+                ${bbksString ? `<div>ББК: ${escapeHtml(bbksString)}</div>` : ''}
                 <button class="show-libraries-btn" data-pub-id="${pub.id}">📚 Показать библиотеки</button>
                 <div class="buildings-list" style="display:none; margin-top:10px; margin-left:20px;"></div>
             </div>
@@ -70,41 +79,10 @@ function renderBuildings(publication, container) {
                 <strong>${escapeHtml(bld.description)}</strong><br>
                 Адрес: ${escapeHtml(bld.address)}<br>
                 В наличии: ${ratio}<br>
-                ${hasAvailable 
-                    ? `<button class="reserve-btn" data-copy="${copyId}" data-building-id="${bld.buildingId}">Забронировать</button>` 
-                    : '<span style="color: gray;">Нет свободных экземпляров</span>'}
             </li>
         `;
     });
     html += '</ul>';
     container.innerHTML = html;
 
-    container.querySelectorAll('.reserve-btn').forEach(btn => {
-        btn.addEventListener('click', async (event) => {
-            event.preventDefault();
-            const copyId = btn.getAttribute('data-copy');
-            if (!copyId) return;
-            try {
-                const response = await fetch('/reserve', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ copyId: copyId })
-                });
-                if (!response.ok) {
-                    const err = await response.json().catch(() => ({}));
-                    throw new Error(err.error || 'Ошибка бронирования');
-                }
-                const data = await response.json();
-                alert(data.message || 'Книга забронирована!');
-
-                const li = btn.closest('li');
-                const ratioSpan = li.querySelector('strong ~ br + br + span, strong ~ br + br + div'); // упрощённо
-
-                btn.replaceWith('<span style="color: green;">Забронировано</span>');
-
-            } catch (err) {
-                alert(`Ошибка: ${err.message}`);
-            }
-        });
-    });
 }

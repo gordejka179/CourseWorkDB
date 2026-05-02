@@ -16,7 +16,7 @@ func (r *Repository) CheckIfReaderExists(email string) (bool, error) {
     
     err := r.db.QueryRow(query, email).Scan(&exists)
     if err != nil {
-        return false, fmt.Errorf("check user exists error: %w", err)
+        return false, fmt.Errorf("ошибка при проверке наличия читателя: %w", err)
     }
     
     return exists, nil
@@ -47,6 +47,7 @@ func (r *Repository) createReaderTx(reader *models.Reader) error {
     // Вызываем SQL-функцию createReader, которая возвращает новый id читателя и номер читательского билета
     var newID int
     var newCard string
+
     err = tx.QueryRow(
         `SELECT readerId, libraryCard FROM createReader($1, $2, $3, $4, $5, $6, $7)`,
         reader.Email,
@@ -58,8 +59,7 @@ func (r *Repository) createReaderTx(reader *models.Reader) error {
         reader.Patronymic,
     ).Scan(&newID, &newCard)
 
-
-     if err != nil {
+    if err != nil {
         // Попытка привести ошибку к pq.Error
         if pqErr, ok := err.(*pq.Error); ok {
             switch pqErr.Code {
