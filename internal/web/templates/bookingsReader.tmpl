@@ -14,6 +14,7 @@
 </head>
 <body>
     <h1>Текущие бронирования</h1>
+    {{if .}}
     {{range .}}
     <div class="booking">
         <p><strong>Название:</strong> {{.Title}}</p>
@@ -43,8 +44,13 @@
             {{end}}
         </p>
         <p><strong>Здание:</strong> {{.Building.Address}}</p>
+        <p><strong>Окончание бронирования:</strong> {{.ExpiryDate}}</p>
 
     </div>
+    {{end}}
+
+    {{else}}
+        <p><strong>Активных бронирований нет</strong></p>
     {{end}}
 </body>
 </html>

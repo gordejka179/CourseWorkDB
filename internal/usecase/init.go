@@ -15,10 +15,12 @@ type Repository interface {
 
     GetCurrentBookingsByEmail(email string) ([]models.BookingInformation, error)
 
-    MakeLoan(emailLibrarian string, emailReader string, copyId int) error
-    GetLoanedBooks(emailReader string) ([]models.IssueInformation, error)
+    MakeLoan(emailLibrarian string, emailReader string, inventoryNumber string) error
+    GetLoanedBooksByReaderEmail(emailReader string) ([]models.IssueInformation, error)
 
+    GetLoanedBooksByReaderLibraryCard(readerLibraryCard string) ([]models.IssueInformation, error)
 
+    GetCurrentBookingsByReaderLibraryCard(readerLibraryCard string) ([]models.BookingInformation, error)
 }
 
 type Service struct {

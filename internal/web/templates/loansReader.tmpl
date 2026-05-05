@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Выданные мне книги</title>
+    <style>
+        .loan {
+            border: 1px solid #ccc;
+            margin: 10px;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Выданные книги</h1>
+    {{if .}}
+        {{range .}}
+        <div class="loan">
+            <p><strong>Название:</strong> {{.title}}</p>
+            <p><strong>Год издания:</strong> {{.publicationyear}}</p>
+
+            <p><strong>Авторы:</strong>
+                {{range $i, $a := .authors}}
+                    {{if $i}}, {{end}}{{$a}}
+                {{end}}
+            </p>
+
+            <p><strong>ISBN:</strong>
+                {{range $i, $isbn := .isbns}}
+                    {{if $i}}, {{end}}{{$isbn}}
+                {{end}}
+            </p>
+
+            <p><strong>ББК:</strong>
+                {{range $i, $bbk := .bbks}}
+                    {{if $i}} + {{end}}{{$bbk}}
+                {{end}}
+            </p>
+
+            <p><strong>Другие индексы:</strong>
+                {{range $i, $idx := .otherindexes}}
+                    {{if $i}}, {{end}}{{$idx}}
+                {{end}}
+            </p>
+
+            <p><strong>Здание:</strong> {{.buildingaddress}}</p>
+            <p><strong>Срок возврата:</strong> {{.expirydate}}</p>
+        </div>
+        {{end}}
+    {{else}}
+        <p>Выданных книг нет</p>
+    {{end}}
+</body>
+</html>

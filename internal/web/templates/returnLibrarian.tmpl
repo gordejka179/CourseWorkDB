@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Поиск выданных книг</title>
+    <style>
+        .loan {
+            border: 1px solid #ccc;
+            margin: 10px;
+            padding: 10px;
+        }
+        button {
+            margin-top: 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Поиск выданных книг по читательскому билету</h1>
+    <div>
+        <label for="cardNumber">Номер читательского билета:</label>
+        <input type="text" id="cardNumber" placeholder="Например, LIB000000001" style="width: 250px;">
+        <button id="searchBtn">Найти</button>
+    </div>
+    <div id="results">
+    </div>
+
+    <script>
+        const searchBtn = document.getElementById('searchBtn');
+        const cardNumberInput = document.getElementById('cardNumber');
+        const resultsDiv = document.getElementById('results');
+
+        searchBtn.addEventListener('click', async () => {
+            const cardNumber = cardNumberInput.value.trim();
+            if (!cardNumber) {
+                resultsDiv.innerHTML = '<p class="error">Введите номер читательского билета</p>';
+                return;
+            }
+
+            resultsDiv.innerHTML = '<p>Загрузка...</p>';
+
+            try {
+                const response = await fetch(`/returnBook`);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText || 'Ошибка сервера');
+                }
+                const books = await response.json();
+                displayBooks(books);
+            } catch (err) {
+                resultsDiv.innerHTML = `<p class="error">Ошибка: ${err.message}</p>`;
+            }
+        });
+
+        function displayBooks(books) {
+            if (!books.length) {
+                resultsDiv.innerHTML = '<p>У читателя нет выданных книг</p>';
+                return;
+            }
+
+            let html = '';
+            for (const book of books) {
+                // authors: массив строк (уже сформированное ФИО)
+                let authorsHtml = '';
+                if (book.authors && book.authors.length) {
+                    authorsHtml = book.authors.join(', ');
+                } else {
+                    authorsHtml = '—';
+                }
+
+                html += `
+                    <div class="loan">
+                        <p><strong>Название:</strong> ${escapeHtml(book.title)}</p>
+                        <p><strong>Год издания:</strong> ${book.publicationyear}</p>
+                        <p><strong>Авторы:</strong> ${escapeHtml(authorsHtml)}</p>
+                        <p><strong>ISBN:</strong> ${book.isbns ? book.isbns.join(', ') : '—'}</p>
+                        <p><strong>ББК:</strong> ${book.bbks ? book.bbks.join(' + ') : '—'}</p>
+                        <p><strong>Другие индексы:</strong> ${book.otherindexes ? book.otherindexes.join(', ') : '—'}</p>
+                        <p><strong>Здание:</strong> ${escapeHtml(book.buildingaddress)}</p>
+                        <p><strong>Срок возврата:</strong> ${escapeHtml(book.expirydate)}</p>
+                        <button class="issue-btn" data-copyid="${book.copyid}">Выдать</button>
+                    </div>
+                `;
+            }
+            resultsDiv.innerHTML = html;
+
+            // Навешиваем обработчики на кнопки "Выдать" (просто заглушка)
+            document.querySelectorAll('.issue-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const copyId = btn.getAttribute('data-copyid');
+                    alert(`Выдача экземпляра ${copyId} (логика не реализована)`);
+                });
+            });
+        }
+
+        //защита от XSS
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+    </script>
+</body>
+</html>

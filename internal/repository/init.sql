@@ -230,7 +230,7 @@ INSERT INTO Copy (inventoryNumber, publicationId, buildingId, readerId, libraria
 ('INV0000000002', 1, 1, NULL, NULL, NULL, NULL),
 ('INV0000000003', 1, 1, NULL, NULL, NULL, NULL),
 ('INV0000000004', 1, 2, NULL, NULL, NULL, NULL),
-('INV0000000005', 2, 2, 1, 1, NULL, NULL),
+('INV0000000005', 2, 2, NULL, NULL, NULL, NULL),
 ('INV0000000006', 3, 2, NULL, NULL, NULL, NULL);
 
 
@@ -534,7 +534,8 @@ RETURNS TABLE(
     bbks TEXT[],
     otherIndexes TEXT[],
     buildingId INT,
-    buildingAddress VARCHAR
+    buildingAddress VARCHAR,
+    expiryDate VARCHAR
 ) LANGUAGE sql 
 AS $$
     SELECT 
@@ -562,11 +563,14 @@ AS $$
             ARRAY[]::TEXT[]
         ),
         lb.libraryBuildingId,
-        lb.address
+        lb.address,
+        c.expiryDate
     FROM Copy c
     JOIN Publication p ON c.publicationId = p.publicationId
     JOIN LibraryBuilding lb ON c.buildingId = lb.libraryBuildingId
     WHERE c.readerId = p_readerId
+      AND c.librarianId IS NULL
+      AND c.expiryDate >= CURRENT_DATE;
 $$;
 
 
@@ -580,6 +584,7 @@ DECLARE
     v_librarianId INT;
     v_expiryDate DATE;
     v_publicationId INT;
+    v_hasOther BOOLEAN;
 BEGIN
 
     SELECT readerId, librarianId, expiryDate, publicationId
@@ -631,3 +636,51 @@ END;
 $$;
 
 
+--Получение книг, которые есть у читателя на руках
+CREATE OR REPLACE FUNCTION get_current_loans_by_readerId(p_readerId INT)
+RETURNS TABLE(
+    copyId INT,
+    expiryDate DATE,
+    inventoryNumber VARCHAR,
+    title VARCHAR,
+    publicationYear INT,
+    authors TEXT[],
+    isbns TEXT[],
+    bbks TEXT[],
+    otherIndexes TEXT[],
+    buildingId INT,
+    buildingAddress VARCHAR
+) LANGUAGE sql AS $$
+    SELECT 
+        c.copyId,
+        c.expiryDate,
+        c.inventoryNumber,
+        p.title,
+        p.publicationYear,
+        COALESCE(
+            (SELECT array_agg(DISTINCT a.lastName || '|' || a.firstName || COALESCE('|' || a.patronymic, '|'))
+                FROM BookAuthor ba 
+                JOIN Author a ON ba.authorId = a.authorId 
+                WHERE ba.publicationId = p.publicationId),
+            ARRAY[]::TEXT[]
+        ),
+        COALESCE(
+            (SELECT array_agg(DISTINCT i.isbn) FROM ISBN i WHERE i.publicationId = p.publicationId),
+            ARRAY[]::TEXT[]
+        ),
+        COALESCE(
+            (SELECT array_agg(DISTINCT br.BBK) FROM BBKRecord br WHERE br.publicationId = p.publicationId),
+            ARRAY[]::TEXT[]
+        ),
+        COALESCE(
+            (SELECT array_agg(DISTINCT oi.index) FROM OtherIndex oi WHERE oi.publicationId = p.publicationId),
+            ARRAY[]::TEXT[]
+        ),
+        lb.libraryBuildingId,
+        lb.address
+    FROM Copy c
+    JOIN Publication p ON c.publicationId = p.publicationId
+    JOIN LibraryBuilding lb ON c.buildingId = lb.libraryBuildingId
+    WHERE c.readerId = p_readerId
+      AND c.librarianId IS NOT NULL;
+$$;

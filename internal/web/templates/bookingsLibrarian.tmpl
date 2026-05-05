@@ -18,77 +18,81 @@
     </style>
 </head>
 <body>
-    <h1>Бронирования</h1>
+    <h1>Бронирования читателей</h1>
     <div>
-        <input type="email" id="email" placeholder="Введите email">
-        <button id="loadBtn">Загрузить</button>
+        <input type="text" id="libraryCard" placeholder="Введите читательский билет (email)">
+        <button id="loadBtn">Поиск</button>
     </div>
     <div id="bookings"></div>
 
     <script>
-        const emailInput = document.getElementById('email');
+        const libraryCardInput = document.getElementById('libraryCard');
         const loadBtn = document.getElementById('loadBtn');
         const container = document.getElementById('bookings');
 
         loadBtn.onclick = async () => {
-            const email = emailInput.value.trim();
-            if (!email) return alert('Введите email');
+            const libraryCard = libraryCardInput.value.trim();
+            if (!libraryCard) return alert('Введите читательский билет');
 
             container.innerHTML = 'Загрузка...';
             try {
-                // получаем бронирования
-                const res = await fetch(`/getCurrentBookings?email=${encodeURIComponent(email)}`);
+            
+                const res = await fetch('/getCurrentBookings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ readerLibraryCard: libraryCard })
+                });
                 if (!res.ok) throw new Error(await res.text());
                 const bookings = await res.json();
 
                 if (!bookings.length) {
-                    container.innerHTML = '<p>Нет бронирований</p>';
+                    container.innerHTML = '<p>Активных бронирований нет</p>';
                     return;
                 }
 
                 let html = '';
                 for (const b of bookings) {
-                    // авторы через запятую
-                    const authors = b.Authors.map(a => `${a.LastName} ${a.FirstName} ${a.Patronymic || ''}`.trim()).join(', ');
-                    // ISBN, другие индексы через запятую
-                    const isbns = b.Isbns?.join(', ') || '';
-                    const other = b.OtherIndexes?.join(', ') || '';
-                    // ББК через +
-                    const bbks = b.BBKs?.join(' + ') || '';
+                    const authors = (b.authors || []).join(', ');
+                    const isbns = (b.isbns || []).join(', ');
+                    const other = (b.otherindexes || []).join(', ');
+                    const bbks = (b.bbks || []).join(' + ');
 
                     html += `
-                        <div class="booking" data-copyid="${b.CopyId}">
-                            <p><strong>Инв. номер:</strong> ${b.InventoryNumber}</p>
-                            <p><strong>Название:</strong> ${b.Title} (${b.PublicationYear})</p>
-                            <p><strong>Авторы:</strong> ${authors}</p>
-                            <p><strong>ISBN:</strong> ${isbns}</p>
-                            <p><strong>ББК:</strong> ${bbks}</p>
-                            <p><strong>Другие индексы:</strong> ${other}</p>
-                            <p><strong>Здание:</strong> ${b.Building?.Address || ''}</p>
-                            <button class="issue-btn" data-copyid="${b.CopyId}">Выдать</button>
+                        <div class="booking" data-inventory-number="${b.inventorynumber}">
+                            <p><strong>Инв. номер:</strong> ${escapeHtml(b.inventorynumber)}</p>
+                            <p><strong>Название:</strong> ${escapeHtml(b.title)} (${escapeHtml(b.publicationyear)})</p>
+                            <p><strong>Авторы:</strong> ${escapeHtml(authors)}</p>
+                            <p><strong>ISBN:</strong> ${escapeHtml(isbns)}</p>
+                            <p><strong>ББК:</strong> ${escapeHtml(bbks)}</p>
+                            <p><strong>Другие индексы:</strong> ${escapeHtml(other)}</p>
+                            <p><strong>Здание:</strong> ${escapeHtml(b.buildingaddress || '')}</p>
+                            <button class="issue-btn" data-inventory-number="${b.inventorynumber}">Выдать</button>
                         </div>
                     `;
                 }
                 container.innerHTML = html;
 
-                // назначаем обработчики на кнопки "Выдать"
+                // Обработчики для кнопок "Выдать"
                 document.querySelectorAll('.issue-btn').forEach(btn => {
-                    btn.onclick = async (e) => {
-                        const copyId = btn.dataset.copyid;
-                        const emailVal = emailInput.value.trim();
+                    btn.onclick = async () => {
+                        const inventoryNumber = btn.dataset.inventoryNumber;
+                        const libraryCard = libraryCardInput.value.trim();
+                        if (!libraryCard) {
+                            alert('Читательский билет не задан');
+                            return;
+                        }
                         btn.disabled = true;
                         btn.textContent = '...';
                         try {
                             const resp = await fetch('/makeLoan', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ copyId: parseInt(copyId), email: emailVal })
+                                body: JSON.stringify({ readerlibrarycard: libraryCard, inventorynumber: inventoryNumber })
                             });
                             if (!resp.ok) throw new Error(await resp.text());
-                            alert('Выдано!');
-                            // удаляем карточку
+                            alert('Книга выдана!');
                             btn.closest('.booking').remove();
-                            if (container.children.length === 0) container.innerHTML = '<p>Нет бронирований</p>';
+                            if (container.children.length === 0) container.innerHTML = '<p>Активных бронирований нет</p>';
                         } catch (err) {
                             alert('Ошибка: ' + err.message);
                         } finally {
@@ -98,9 +102,20 @@
                     };
                 });
             } catch (err) {
-                container.innerHTML = `<p style="color:red">Ошибка: ${err.message}</p>`;
+                container.innerHTML = `<p style="color:red">Ошибка: ${escapeHtml(err.message)}</p>`;
             }
         };
+
+        function escapeHtml(str) {
+            if (str == null) return '';
+            str = String(str);
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
     </script>
 </body>
 </html>

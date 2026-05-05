@@ -27,8 +27,6 @@ func (h *Handler) InitRoutes() *gin.Engine {
 		auth.GET("/logout", h.signOut)		
 	}
 
-
-	//нужна авторизация
 	protected := router.Group("/")
 	protected.Use(authMiddleware())
 	{
@@ -37,9 +35,11 @@ func (h *Handler) InitRoutes() *gin.Engine {
 		protected.POST("/searchBook", h.searchBook)
 		protected.POST("/reserve", h.reserve)
 		protected.GET("/getCurrentBookings", h.getCurrentBookings)
+		protected.POST("/getCurrentBookings", h.getCurrentBookings)
 		protected.GET("/makeLoan", h.makeLoan)
-
-		protected.GET("/makeLoan", h.getLoanedBooks)
+		protected.POST("/makeLoan", h.makeLoan)
+		protected.GET("/getLoanedBooks", h.getLoanedBooks)
+		protected.POST("/getLoanedBooks", h.getLoanedBooks)
 	}
 
 	return router

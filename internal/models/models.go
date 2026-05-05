@@ -69,10 +69,12 @@ type BookingInformation struct {
 	BBKs []string
     OtherIndexes []string
     Building Building
+    ExpiryDate string
 }
 
 type IssueInformation struct {
     CopyId int
+    ExpiryDate string
     InventoryNumber string
     Title string
     PublicationYear int

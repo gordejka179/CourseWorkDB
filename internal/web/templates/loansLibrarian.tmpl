@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Бронирования читателей</title>
+    <style>
+        body { font-family: sans-serif; margin: 2rem; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: inline-block; width: 150px; }
+        input { padding: 0.3rem; width: 200px; }
+        button { margin-top: 0.5rem; }
+        .message { margin-top: 1rem; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Сделать выдачу книги</h1>
+    <form id="loanForm">
+        <div class="form-group">
+            <label for="cardNumber">Читательский билет:</label>
+            <input type="text" id="cardNumber" placeholder="000000000001" required>
+        </div>
+        <div class="form-group">
+            <label for="invNumber">Инвентарный номер:</label>
+            <input type="text" id="invNumber" placeholder="INV0000000001" required>
+        </div>
+        <button type="submit">Выдать</button>
+    </form>
+    <div id="message"></div>
+
+    <script>
+        const form = document.getElementById('loanForm');
+        const messageDiv = document.getElementById('message');
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            messageDiv.innerHTML = '';
+
+            const cardNumber = document.getElementById('cardNumber').value.trim();
+            const invNumber = document.getElementById('invNumber').value.trim();
+
+            if (!cardNumber || !invNumber) {
+                messageDiv.innerHTML = '<div class="message error">Заполните оба поля</div>';
+                return;
+            }
+
+            try {
+                const response = await fetch('/makeLoan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ readerlibrarycard: cardNumber, inventorynumber: invNumber })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    messageDiv.innerHTML = '<div class="message success">Книга выдана</div>';
+                    document.getElementById('invNumber').value = '';
+                } else {
+                    messageDiv.innerHTML = `<div class="message error">Ошибка: ${data.error || 'неизвестная ошибка'}</div>`;
+                }
+            } catch (err) {
+                messageDiv.innerHTML = `<div class="message error">Сетевая ошибка: ${err.message}</div>`;
+            }
+        });
+    </script>
+</body>
+</html>

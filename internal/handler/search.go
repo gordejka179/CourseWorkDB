@@ -24,7 +24,22 @@ type SearchForm struct {
 
 //выдаём html
 func (h *Handler) search(c *gin.Context) {
-	c.HTML(http.StatusOK, "searchReader.tmpl", gin.H{})
+    roleRaw, _ := c.Get("role")
+    role, ok := roleRaw.(string)
+    if !ok {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "ошибка получения role"})
+        return
+    }
+
+	if role == "reader"{
+        c.HTML(http.StatusOK, "searchReader.tmpl", gin.H{})
+        return
+    }
+        
+    if role == "librarian"{        
+	    c.HTML(http.StatusOK, "searchLibrarian.tmpl", gin.H{})
+        return
+    }
 }
 
 func (h *Handler) searchBook(c *gin.Context) {
