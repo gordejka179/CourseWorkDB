@@ -42,7 +42,6 @@ func (h *Handler) makeLoan(c *gin.Context) {
             return
         }
 
-        fmt.Println(loanReq.ReaderLibraryCard, emailLibrarian, loanReq.InventoryNumber)
         err := h.service.MakeLoan(loanReq.ReaderLibraryCard, emailLibrarian, loanReq.InventoryNumber)
         if err != nil {
             c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

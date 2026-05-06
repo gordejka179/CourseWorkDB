@@ -7,7 +7,9 @@ type Repository interface {
     CreateReader(reader *models.Reader) error
     CheckReaderCredentials(email, password string) (bool, error)
     CheckLibrarianCredentials(email, password string) (success bool, err error)
+
     GetPublicationsByISBN(ISBN string) ([]models.Publication, error)
+    GetPublicationsByTitle(Title string) ([]models.Publication, error)
 
     GetCopiesByIDList(ids []int)([]models.Copy, error)
 
@@ -21,6 +23,8 @@ type Repository interface {
     GetLoanedBooksByReaderLibraryCard(readerLibraryCard string) ([]models.IssueInformation, error)
 
     GetCurrentBookingsByReaderLibraryCard(readerLibraryCard string) ([]models.BookingInformation, error)
+
+    ReturnBook(readerLibraryCard string, inventoryNumber string) error
 }
 
 type Service struct {

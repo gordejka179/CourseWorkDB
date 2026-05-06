@@ -44,7 +44,7 @@ type Publication struct {
     Title string
     PublicationYear int
     Authors []Author
-    ISBN string
+    ISBNs []string
     BBKs []string
     OtherIndexes []string
 }

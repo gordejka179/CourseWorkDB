@@ -9,8 +9,7 @@ function renderResults(publications) {
     //итерируемся по публикациям
     publications.forEach(pub => {
         const authors = pub.authors ? pub.authors.join(', ') : ''; //превращаем массив в одну строку, разделяя запятой авторов
-        const isbn = pub.isbn || '';
-        let bbksString = '';
+        const isbnString = pub.isbns && Array.isArray(pub.isbns) ? pub.isbns.join(', ') : '';        let bbksString = '';
         if (pub.bbks) {
             if (Array.isArray(pub.bbks)) {
                 bbksString = pub.bbks.join(' + ');
@@ -24,7 +23,7 @@ function renderResults(publications) {
                     📘 ${escapeHtml(pub.title)} (${pub.publicationyear})
                 </div>
                 <div>Авторы: ${escapeHtml(authors)}</div>
-                <div>ISBN: ${escapeHtml(isbn)}</div>
+                <div>ISBN: ${escapeHtml(isbnString)}</div>
                 ${bbksString ? `<div>ББК: ${escapeHtml(bbksString)}</div>` : ''}
                 <button class="show-libraries-btn" data-pub-id="${pub.id}">📚 Показать библиотеки</button>
                 <div class="buildings-list" style="display:none; margin-top:10px; margin-left:20px;"></div>
@@ -106,11 +105,18 @@ function renderBuildings(publication, container) {
                 const data = await response.json();
                 alert(data.message || 'Книга забронирована!');
 
+                const building = publication.buildings.find(b => b.buildingid == btn.buildingId);
+                if (building && building.availableCopies > 0) {
+                    building.availableCopies--;
+                    building.availableCopyIds.shift(); // удаляем использованный экземпляр
+                }
+
+                renderBuildings(publication, container);
+
                 const li = btn.closest('li');
                 const ratioSpan = li.querySelector('strong ~ br + br + span, strong ~ br + br + div'); // упрощённо
 
-                btn.replaceWith('<span style="color: green;">Забронировано</span>');
-
+                btn.replaceWith(document.createTextNode('Забронировано'));
             } catch (err) {
                 alert(`Ошибка: ${err.message}`);
             }

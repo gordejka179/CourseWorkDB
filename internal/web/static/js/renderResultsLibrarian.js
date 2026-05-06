@@ -9,7 +9,8 @@ function renderResults(publications) {
     //итерируемся по публикациям
     publications.forEach(pub => {
         const authors = pub.authors ? pub.authors.join(', ') : ''; //превращаем массив в одну строку, разделяя запятой авторов
-        const isbn = pub.isbn || '';
+        const isbnString = pub.isbns && Array.isArray(pub.isbns) ? pub.isbns.join(', ') : '';
+
         let bbksString = '';
         if (pub.bbks) {
             if (Array.isArray(pub.bbks)) {
@@ -24,7 +25,7 @@ function renderResults(publications) {
                     📘 ${escapeHtml(pub.title)} (${pub.publicationyear})
                 </div>
                 <div>Авторы: ${escapeHtml(authors)}</div>
-                <div>ISBN: ${escapeHtml(isbn)}</div>
+                <div>ISBN: ${escapeHtml(isbnString)}</div>
                 ${bbksString ? `<div>ББК: ${escapeHtml(bbksString)}</div>` : ''}
                 <button class="show-libraries-btn" data-pub-id="${pub.id}">📚 Показать библиотеки</button>
                 <div class="buildings-list" style="display:none; margin-top:10px; margin-left:20px;"></div>

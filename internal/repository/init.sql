@@ -393,7 +393,7 @@ RETURNS TABLE(
     publicationId INT,
     title VARCHAR,
     publicationYear INT,
-    isbn TEXT,
+    isbns TEXT[],
     BBKs TEXT[],
     otherIndexes TEXT[],
     authors TEXT[]
@@ -402,10 +402,16 @@ LANGUAGE sql
 AS $$
 
     --находим издание с нужным isbn
-    WITH main_pub AS(
+    WITH main_pub_id AS(
         SELECT publicationId, isbn
         FROM ISBN
         WHERE ISBN = p_isbn
+    ),
+
+    main_pub AS (
+        SELECT i.publicationId, i.isbn
+        FROM ISBN i
+        WHERE i.publicationId IN (SELECT publicationId FROM main_pub_id)
     ),
 
     --для найденного издания ищем все isbn, с которыми это издание связано
@@ -432,17 +438,63 @@ AS $$
 
     --теперь собираем информацию о всех изданиях
     SELECT 
-        DISTINCT p.publicationId,
+        p.publicationId,
         p.title,
         p.publicationYear,
-        aip.ISBN AS isbn,
-        (SELECT array_agg(DISTINCT br.BBK) FROM BBKRecord br WHERE br.publicationId = p.publicationId) AS BBKs,
-        (SELECT array_agg(DISTINCT oi.index) FROM OtherIndex oi WHERE oi.publicationId = p.publicationId) AS OtherIndexes,
-        (SELECT array_agg(DISTINCT a.lastName || '|' || a.firstName || COALESCE('|' || a.patronymic, '|'))
-            FROM BookAuthor ba JOIN Author a ON ba.authorId = a.authorId
+        (SELECT array_agg(aip.isbn)
+            FROM all_isbns_for_publication aip
+            WHERE aip.publicationId = p.publicationId) AS isbns,
+
+        (SELECT array_agg(br.BBK)
+            FROM BBKRecord br WHERE br.publicationId = p.publicationId) AS BBKs,
+
+        (SELECT array_agg(oi.index)
+            FROM OtherIndex oi WHERE oi.publicationId = p.publicationId) AS otherIndexes,
+
+        (SELECT array_agg(a.lastName || '|' || a.firstName || COALESCE('|' || a.patronymic, '|'))
+            FROM BookAuthor ba 
+            JOIN Author a ON ba.authorId = a.authorId
             WHERE ba.publicationId = p.publicationId) AS authors
     FROM Publication p
-    JOIN all_isbns_for_publication aip ON aip.publicationId = p.publicationId
+    JOIN (SELECT DISTINCT publicationId FROM all_isbns_for_publication) AS aip ON p.publicationId = aip.publicationId
+$$;
+
+
+--поиск изданий по названию
+CREATE OR REPLACE FUNCTION search_publications_by_title(p_title VARCHAR)
+RETURNS TABLE(
+    publicationId INT,
+    title VARCHAR,
+    publicationYear INT,
+    isbns TEXT[],
+    BBKs TEXT[],
+    otherIndexes TEXT[],
+    authors TEXT[]
+)
+LANGUAGE sql
+AS $$
+    SELECT 
+        p.publicationId,
+        p.title,
+        p.publicationYear,
+        (SELECT array_agg(isbn.ISBN)
+            FROM ISBN isbn 
+            WHERE isbn.publicationId = p.publicationId) AS isbns,
+
+        (SELECT array_agg(br.BBK)
+            FROM BBKRecord br 
+            WHERE br.publicationId = p.publicationId) AS BBKs,
+
+        (SELECT array_agg(oi.index)
+            FROM OtherIndex oi 
+            WHERE oi.publicationId = p.publicationId) AS otherIndexes,
+
+        (SELECT array_agg(a.lastName || '|' || a.firstName || COALESCE('|' || a.patronymic, '|'))
+            FROM BookAuthor ba 
+            JOIN Author a ON ba.authorId = a.authorId
+            WHERE ba.publicationId = p.publicationId) AS authors
+    FROM Publication p
+    WHERE p.title ILIKE '%' || COALESCE(p_title, '') || '%'  --ILIKE - для совпадений без учета регистра
 $$;
 
 
@@ -683,4 +735,21 @@ RETURNS TABLE(
     JOIN LibraryBuilding lb ON c.buildingId = lb.libraryBuildingId
     WHERE c.readerId = p_readerId
       AND c.librarianId IS NOT NULL;
+$$;
+
+--возврат книги
+CREATE OR REPLACE FUNCTION return_copy(p_copy_id INT, p_reader_id INT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE copy
+    SET readerId   = NULL,
+        librarianId = NULL,
+        startDate   = NULL,
+        expiryDate  = NULL
+    WHERE copyId = p_copy_id AND readerId = p_reader_id;
+
+    RETURN FOUND; --если строка обновилась, то вернём true
+END;
 $$;

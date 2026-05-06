@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Возврат книги</title>
+</head>
+<body>
+    <h2>Возврат книги</h2>
+    <form id="returnForm">
+        <div class="form-group">
+            <label for="readerLibraryCard">Читательский номер</label>
+            <input type="text" id="readerLibraryCard" name="readerLibraryCard" required>
+        </div>
+        <div class="form-group">
+            <label for="inventoryNumber">Инвентарный номер</label>
+            <input type="text" id="inventoryNumber" name="inventoryNumber" required>
+        </div>
+        <button type="submit">Вернуть книгу</button>
+    </form>
+    <div id="message" class="message"></div>
+
+    <script>
+        const form = document.getElementById('returnForm');
+        const messageDiv = document.getElementById('message');
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const readerLibraryCard = document.getElementById('readerLibraryCard').value.trim();
+            const inventoryNumber = document.getElementById('inventoryNumber').value.trim();
+
+            if (!readerLibraryCard || !inventoryNumber) {
+                showMessage('Заполните оба поля', false);
+                return;
+            }
+
+            // Блокируем кнопку на время запроса (просто для удобства)
+            const submitBtn = form.querySelector('button');
+            submitBtn.disabled = true;
+            showMessage('Отправка...', null);
+
+            try {
+                const response = await fetch('/returnBook', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ readerLibraryCard, inventoryNumber })
+                });
+
+                if (response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    const msg = data.message || data.detail || 'Книга успешно возвращена';
+                    showMessage(msg, true);
+                    form.reset(); // очищаем поля при успехе
+                } else {
+                    let errorText = 'Ошибка при возврате';
+                    try {
+                        const errorData = await response.json();
+                        errorText = errorData.error || errorData.message || `Ошибка ${response.status}`;
+                    } catch (e) {
+                        errorText = `Ошибка сервера: ${response.status}`;
+                    }
+                    showMessage(errorText, false);
+                }
+            } catch (err) {
+                showMessage('Ошибка сети: ' + err.message, false);
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+
+        function showMessage(text, isSuccess) {
+            messageDiv.textContent = text;
+            messageDiv.className = 'message';
+            if (isSuccess === true) {
+                messageDiv.classList.add('success');
+            } else if (isSuccess === false) {
+                messageDiv.classList.add('error');
+            }
+        }
+    </script>
+</body>
+</html>

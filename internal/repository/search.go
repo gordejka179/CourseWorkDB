@@ -7,14 +7,13 @@ import (
 	"github.com/lib/pq"
 )
 
-
-
+//получаем издание(издания, если есть записи в otherISBN) по isbn
 func (r *Repository) GetPublicationsByISBN(ISBN string) ([]models.Publication, error) {
     query := `SELECT 
     publicationId, 
-    title, 
+    COALESCE(title, '') as title,
     COALESCE(publicationYear, 0) AS publicationYear,
-    COALESCE(isbn, '') AS isbn,
+    COALESCE(isbns, '{}') AS isbns,
     COALESCE(bbks, '{}') AS bbks,
     COALESCE(otherIndexes, '{}') AS otherIndexes,
     COALESCE(authors, '{}') AS authors
@@ -36,7 +35,7 @@ func (r *Repository) GetPublicationsByISBN(ISBN string) ([]models.Publication, e
             publicationYear int
             bbks []string
             otherIndexes []string
-            isbn string
+            isbns []string
             authors []string //ниже преобразуем
         )
 
@@ -44,7 +43,7 @@ func (r *Repository) GetPublicationsByISBN(ISBN string) ([]models.Publication, e
             &publicationId,
             &title,
             &publicationYear,
-            &isbn,
+            pq.Array(&isbns),
             pq.Array(&bbks),
             pq.Array(&otherIndexes),
             pq.Array(&authors),
@@ -69,12 +68,12 @@ func (r *Repository) GetPublicationsByISBN(ISBN string) ([]models.Publication, e
 	    
 
         pub := models.Publication{
-            ID:              publicationId,
-            Title:           title,
+            ID: publicationId,
+            Title: title,
             PublicationYear: publicationYear,
-            Authors:          formattedAuthors,
-            ISBN:            isbn,
-            BBKs:            bbks,
+            Authors: formattedAuthors,
+            ISBNs: isbns,
+            BBKs: bbks,
         }
         publications = append(publications, pub)
     }
@@ -85,7 +84,6 @@ func (r *Repository) GetPublicationsByISBN(ISBN string) ([]models.Publication, e
 
     return publications, nil
 }
-
 
 
 func (r *Repository) GetCopiesByIDList(ids []int) ([]models.Copy, error) {
@@ -130,3 +128,81 @@ func (r *Repository) GetCopiesByIDList(ids []int) ([]models.Copy, error) {
     return copies, nil
 }
 
+
+//получаем издания по названию
+func (r *Repository) GetPublicationsByTitle(title string) ([]models.Publication, error){
+    query := `SELECT 
+    publicationId, 
+    COALESCE(title, '') as title,
+    COALESCE(publicationYear, 0) AS publicationYear,
+    COALESCE(isbns, '{}') AS isbns,
+    COALESCE(bbks, '{}') AS bbks,
+    COALESCE(otherIndexes, '{}') AS otherIndexes,
+    COALESCE(authors, '{}') AS authors
+    FROM search_publications_by_title($1)`
+
+    rows, err := r.db.Query(query, title)
+
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var publications []models.Publication
+
+    for rows.Next() {
+        var (
+            publicationId int
+            title string
+            publicationYear int
+            bbks []string
+            otherIndexes []string
+            isbns []string
+            authors []string //ниже преобразуем
+        )
+
+        err := rows.Scan(
+            &publicationId,
+            &title,
+            &publicationYear,
+            pq.Array(&isbns),
+            pq.Array(&bbks),
+            pq.Array(&otherIndexes),
+            pq.Array(&authors),
+        )
+
+        
+        if err != nil {
+            return nil, err
+        }
+        
+        var formattedAuthors []models.Author
+
+        for _ , a := range authors{
+            if a != ""{
+			    fullname := strings.Split(a, "|")
+
+			    author := models.Author{LastName: fullname[0], FirstName: fullname[1], Patronymic: fullname[2]}
+
+			    formattedAuthors = append(formattedAuthors, author)
+            }
+		}
+	    
+
+        pub := models.Publication{
+            ID: publicationId,
+            Title: title,
+            PublicationYear: publicationYear,
+            Authors: formattedAuthors,
+            ISBNs: isbns,
+            BBKs: bbks,
+        }
+        publications = append(publications, pub)
+    }
+
+    if err = rows.Err(); err != nil {
+        return nil, err
+    }
+
+    return publications, nil
+}

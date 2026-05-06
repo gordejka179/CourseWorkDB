@@ -59,7 +59,6 @@ func (h *Handler) searchBook(c *gin.Context) {
 	if searchForm.Authors != ""{
 		Authors := strings.Split(searchForm.Authors, ";")
 
-
 		for _ , a := range Authors{
 			a = a[1:len(a) - 1]
 			fullname := strings.Split(a, "|")
@@ -95,11 +94,11 @@ func (h *Handler) searchBook(c *gin.Context) {
 		//меняем map из зданий на слайс
         for _, b := range pub.Buildings {
             buildingsSlice = append(buildingsSlice, gin.H{
-                "buildingId":                b.BuildingId,
-                "address":                   b.Address,
-                "description":               b.Description,
-                "totalCopies":               b.TotalCopies,
-                "availableCopies":           b.AvailableCopies,
+                "buildingId": b.BuildingId,
+                "address": b.Address,
+                "description": b.Description,
+                "totalCopies": b.TotalCopies,
+                "availableCopies": b.AvailableCopies,
                 "availableCopyIds": b.AvailableCopyIds,
             })
         }
@@ -113,14 +112,14 @@ func (h *Handler) searchBook(c *gin.Context) {
 		}
 
         item := gin.H{
-            "id":              pub.Id,
-            "title":           pub.Title,
+            "id": pub.Id,
+            "title": pub.Title,
             "publicationyear": pub.PublicationYear,
-            "authors":         authorStrings,
-            "isbn":            pub.Isbn,
-            "bbks":            pub.BBKs,
-            "otherindexes":    pub.OtherIndexes,
-            "buildings":       buildingsSlice, //теперь тут слайс
+            "authors": authorStrings,
+            "isbns": pub.Isbns,
+            "bbks": pub.BBKs,
+            "otherindexes": pub.OtherIndexes,
+            "buildings": buildingsSlice,
         }
         result = append(result, item)
     }

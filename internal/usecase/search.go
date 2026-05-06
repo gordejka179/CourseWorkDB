@@ -1,6 +1,8 @@
 package usecase
 
 import (
+	"fmt"
+
 	"github.com/gordejka179/CourseWorkDB/internal/models"
 )
 
@@ -35,7 +37,7 @@ type PublicationResponse struct {
     Title string `json:"title"`
     PublicationYear int `json:"publicationyear"`
     Authors []models.Author `json:"authors"`
-    Isbn string `json:"isbn"`
+    Isbns []string `json:"isbn"`
 	BBKs []string `json:"bbks"`
     OtherIndexes []string `json:"otherindexes"`
     Buildings map[int]*BuildingAvailability `json:"buildings"`
@@ -45,8 +47,8 @@ type PublicationResponse struct {
 func (s *Service) SearchPublications(form ParametersForm) (map[int]*PublicationResponse, error) {
     steps := []SearchStep{
         {ShouldRun: func(f ParametersForm) bool { return f.ISBN != "" }, Execute: s.searchByISBN},
-		/*
         {ShouldRun: func(f ParametersForm) bool { return f.Title != ""}, Execute: s.searchByTitle},
+		/*
         {ShouldRun: func(f ParametersForm) bool { return len(f.Authors) != 0 }, Execute: s.searchByAuthors},
         {ShouldRun: func(f ParametersForm) bool { return f.PublicationYear != "" }, Execute: s.searchByPublicationYear},
         {ShouldRun: func(f ParametersForm) bool { return len(f.OtherIndexes) != 0 }, Execute: s.searchByOtherIndexes},
@@ -76,7 +78,7 @@ func (s *Service) searchByISBN(form ParametersForm)(map[int]*PublicationResponse
 			Title: p.Title,
 			PublicationYear: p.PublicationYear,
     		Authors: p.Authors,
-    		Isbn: p.ISBN,
+    		Isbns: p.ISBNs,
 			BBKs: p.BBKs,
     		OtherIndexes: p.OtherIndexes,
     		Buildings: map[int]*BuildingAvailability{},
@@ -125,3 +127,15 @@ func (s *Service) searchByISBN(form ParametersForm)(map[int]*PublicationResponse
 	return pubMap, err
 }
 
+
+func (s *Service) searchByTitle(form ParametersForm) (map[int]*PublicationResponse, error) {
+	pubs, err := s.repo.GetPublicationsByTitle(form.Title)
+
+
+	fmt.Println(pubs)
+	if err != nil{
+		return map[int]*PublicationResponse{}, err
+	}
+
+	return map[int]*PublicationResponse{}, err
+}
