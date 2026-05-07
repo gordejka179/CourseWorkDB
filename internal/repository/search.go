@@ -412,3 +412,82 @@ func (r *Repository) GetPublicationsByBBK(bbks []string) ([]models.Publication, 
     return publications, nil
 }
 
+
+func (r *Repository) GetPublicationsByOtherIndex(otherIndex string) ([]models.Publication, error){
+    query := `SELECT 
+    publicationId, 
+    COALESCE(title, '') as title,
+    COALESCE(publicationYear, 0) AS publicationYear,
+    COALESCE(isbns, '{}') AS isbns,
+    COALESCE(bbks, '{}') AS bbks,
+    COALESCE(otherIndexes, '{}') AS otherIndexes,
+    COALESCE(authors, '{}') AS authors
+    FROM search_publications_by_other_index($1)`
+
+    rows, err := r.db.Query(query, otherIndex)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var publications []models.Publication
+
+    for rows.Next() {
+        var (
+            publicationId int
+            title string
+            publicationYear int
+            bbks []string
+            otherIndexes []string
+            isbns []string
+            authors []string //ниже преобразуем
+        )
+
+        err := rows.Scan(
+            &publicationId,
+            &title,
+            &publicationYear,
+            pq.Array(&isbns),
+            pq.Array(&bbks),
+            pq.Array(&otherIndexes),
+            pq.Array(&authors),
+        )
+
+        
+        if err != nil {
+            return nil, err
+        }
+        
+        var formattedAuthors []models.Author
+
+        for _ , a := range authors{
+            if a != ""{
+			    fullname := strings.Split(a, "|")
+
+			    author := models.Author{LastName: fullname[0], FirstName: fullname[1], Patronymic: fullname[2]}
+
+			    formattedAuthors = append(formattedAuthors, author)
+            }
+		}
+	    
+
+        pub := models.Publication{
+            ID: publicationId,
+            Title: title,
+            PublicationYear: publicationYear,
+            Authors: formattedAuthors,
+            ISBNs: isbns,
+            OtherIndexes: otherIndexes,
+            BBKs: bbks,
+        }
+        publications = append(publications, pub)
+    }
+
+    if err = rows.Err(); err != nil {
+        return nil, err
+    }
+
+    return publications, nil
+}
+
+

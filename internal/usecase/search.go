@@ -84,10 +84,7 @@ func (s *Service) SearchPublications(form ParametersForm) (map[int]*PublicationR
         {ShouldRun: func(f ParametersForm) bool { return f.ISBN != "" }, Execute: s.searchByISBN},
         {ShouldRun: func(f ParametersForm) bool { return f.Title != ""}, Execute: s.searchByTitle},
         {ShouldRun: func(f ParametersForm) bool { return f.Author.LastName != "" || f.Author.FirstName != "" || f.Author.Patronymic != "" }, Execute: s.searchByAuthor},
-		/*
-        {ShouldRun: func(f ParametersForm) bool { return f.PublicationYear != 0 }, Execute: s.searchByPublicationYear},
-        {ShouldRun: func(f ParametersForm) bool { return len(f.OtherIndexes) != 0 }, Execute: s.searchByOtherIndexes},
-		*/
+		{ShouldRun: func(f ParametersForm) bool { return f.OtherIndexes != "" }, Execute: s.searchByOtherIndexes},
 		{ShouldRun: func(f ParametersForm) bool { return len(f.BBKs) != 0 }, Execute: s.searchByBBKs},
     }
     for _, step := range steps {
@@ -322,3 +319,34 @@ func (s *Service) searchByBBKs(form ParametersForm) (map[int]*PublicationRespons
 
 	return s.GetCopiesByIDList(pubMap, ids)
 }
+
+
+func (s *Service) searchByOtherIndexes(form ParametersForm) (map[int]*PublicationResponse, error) {
+	pubs, err := s.repo.GetPublicationsByOtherIndex(form.OtherIndexes)
+	if err != nil{
+		return map[int]*PublicationResponse{}, err
+	}
+	
+	pubMap := make(map[int]*PublicationResponse)
+	for _, p:= range pubs{
+		pubMap[p.ID] = &PublicationResponse{
+			Id: p.ID,
+			Title: p.Title,
+			PublicationYear: p.PublicationYear,
+    		Authors: p.Authors,
+    		Isbns: p.ISBNs,
+			BBKs: p.BBKs,
+    		OtherIndexes: p.OtherIndexes,
+    		Buildings: map[int]*BuildingAvailability{},
+		}
+	}
+
+	//теперь получаем информацию про конкретные экземпляры
+	ids := make([]int, 0, len(pubMap))
+    for id, _ := range pubMap {
+        ids = append(ids, id)
+    }
+
+	return s.GetCopiesByIDList(pubMap, ids)
+}
+

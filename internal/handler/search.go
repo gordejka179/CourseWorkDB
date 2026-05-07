@@ -18,7 +18,7 @@ type SearchForm struct {
 	Title string `json:"title"`
 	BBKs string `json:"bbks"`
 	PublicationYear string `json:"publicationyear"`
-	OtherIndexes string `json:"otherindexes"`
+	OtherIndex string `json:"otherindex"`
 	AlternativeSearch bool `json:"alternativesearch"` //нужно, чтобы понимать, показывать ли ббк, которые являются рекомендательными
 }
 
@@ -86,7 +86,7 @@ func (h *Handler) searchBook(c *gin.Context) {
 		Title: searchForm.Title,
 		BBKs: bbkCodes,
 		PublicationYear: pubYear,
-		OtherIndexes: searchForm.OtherIndexes,
+		OtherIndexes: searchForm.OtherIndex,
 		AdditionalSearch: searchForm.AlternativeSearch,
 	}
 	pubsResponse, err := h.service.SearchPublications(ParametersForm)
@@ -112,8 +112,6 @@ func (h *Handler) searchBook(c *gin.Context) {
                 "availableCopyIds": b.AvailableCopyIds,
             })
         }
-
-
 		authorStrings := make([]string, len(pub.Authors))
 
 		//из массива структур Author делаем массив строк
@@ -133,8 +131,6 @@ func (h *Handler) searchBook(c *gin.Context) {
         }
         result = append(result, item)
     }
-
 	c.JSON(http.StatusOK, result)
-
 }
 

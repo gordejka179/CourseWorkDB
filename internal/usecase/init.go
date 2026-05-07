@@ -14,6 +14,7 @@ type Repository interface {
     GetFullCodes(bbkCodes []string) ([]string, error)
     GetAdditionalCodes(fullCodes []string) ([]string, error)
     GetPublicationsByBBK(allCodes []string) ([]models.Publication, error)
+    GetPublicationsByOtherIndex(otherIndex string) ([]models.Publication, error)
 
 
     GetCopiesByIDList(ids []int)([]models.Copy, error)

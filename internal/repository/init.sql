@@ -653,6 +653,51 @@ AS $$
 $$;
 
 
+CREATE OR REPLACE FUNCTION search_publications_by_other_index(p_index TEXT)
+RETURNS TABLE(
+    publicationId INT,
+    title VARCHAR,
+    publicationYear INT,
+    isbns TEXT[],
+    bbks TEXT[],
+    otherIndexes TEXT[],
+    authors TEXT[]
+)
+LANGUAGE sql
+AS $$
+    SELECT 
+        p.publicationId,
+        p.title,
+        p.publicationYear,
+        COALESCE(
+            (SELECT array_agg(i.isbn) FROM ISBN i WHERE i.publicationId = p.publicationId),
+            ARRAY[]::TEXT[]
+        ) AS isbns,
+        COALESCE(
+            (SELECT array_agg(br.BBK) FROM BBKRecord br WHERE br.publicationId = p.publicationId),
+            ARRAY[]::TEXT[]
+        ) AS bbks,
+        COALESCE(
+            (SELECT array_agg(oi.index) FROM OtherIndex oi WHERE oi.publicationId = p.publicationId),
+            ARRAY[]::TEXT[]
+        ) AS otherIndexes,
+        COALESCE(
+            (SELECT array_agg(a.lastName || '|' || a.firstName || COALESCE('|' || a.patronymic, '|'))
+             FROM BookAuthor ba 
+             JOIN Author a ON ba.authorId = a.authorId
+             WHERE ba.publicationId = p.publicationId),
+            ARRAY[]::TEXT[]
+        ) AS authors
+    FROM Publication p
+    WHERE EXISTS (
+        SELECT 1 
+        FROM OtherIndex oi
+        WHERE oi.publicationId = p.publicationId
+          AND oi.index ILIKE '%' || COALESCE(p_index, '') || '%'
+    );
+$$;
+
+
 --Бронирование экземпляра по id читателя и id экземпляра. Бронируем на 3 дня
 CREATE OR REPLACE FUNCTION reserveCopyByEmail(p_readerId INT, p_copyId INT)
 RETURNS BOOLEAN AS $$
