@@ -161,7 +161,9 @@ INSERT INTO Publication (title, publicationYear) VALUES
 ('Удивительная палеонтология: история Земли и жизни на ней', 2014),
 
 --лидары (выдуманный пример)
-('Алгоритмы, применяемые в лидарах', 2020);
+('Алгоритмы, применяемые в лидарах', 2020),
+
+('Лидары', 2025);
 
 INSERT INTO ISBN (ISBN, publicationId) VALUES
 --Еськов:
@@ -178,7 +180,7 @@ INSERT INTO ISBNOther (publicationId, ISBN) VALUES
 
 INSERT INTO OtherIndex (publicationId, index) VALUES
 (2, '56'),
-(2, ' ГРНТИ');
+(2, ' ГРНТИ3543');
 
 
 INSERT INTO BBKDictionary (BBK) VALUES
@@ -215,7 +217,9 @@ INSERT INTO BBKRecord (publicationId, BBK) VALUES
 (2, 'Е1'),
 
 --про лидары:
-(3, 'З81');
+(3, 'З81'),
+
+(4, 'З956-5');
 
 INSERT INTO BookAuthor (publicationId, authorId) VALUES
 (1, 1),
@@ -231,7 +235,8 @@ INSERT INTO Copy (inventoryNumber, publicationId, buildingId, readerId, libraria
 ('INV0000000003', 1, 1, NULL, NULL, NULL, NULL),
 ('INV0000000004', 1, 2, NULL, NULL, NULL, NULL),
 ('INV0000000005', 2, 2, NULL, NULL, NULL, NULL),
-('INV0000000006', 3, 2, NULL, NULL, NULL, NULL);
+('INV0000000006', 3, 2, NULL, NULL, NULL, NULL),
+('INV0000000007', 4, 2, NULL, NULL, NULL, NULL);
 
 
 INSERT INTO BBKAlternative (sourceCode, targetCode) VALUES
@@ -239,8 +244,6 @@ INSERT INTO BBKAlternative (sourceCode, targetCode) VALUES
 ('З956-5', 'З859'), 
 
 ('З956-5', 'З81');
-
-
 
 
 
@@ -386,8 +389,7 @@ END;
 $$;
 
 
-
---ищем публикации по isbn + смотрим на ISBNOther
+--ищем издания по isbn + смотрим на ISBNOther
 CREATE OR REPLACE FUNCTION search_publications_by_isbn(p_isbn VARCHAR)
 RETURNS TABLE(
     publicationId INT,
@@ -460,6 +462,59 @@ AS $$
 $$;
 
 
+--ищем издания по автору
+CREATE OR REPLACE FUNCTION search_publications_by_author(
+    p_lastname VARCHAR,
+    p_firstname VARCHAR DEFAULT NULL,
+    p_patronymic VARCHAR DEFAULT NULL
+)
+RETURNS TABLE(
+    publicationId INT,
+    title VARCHAR,
+    publicationYear INT,
+    isbns TEXT[],
+    bbks TEXT[],
+    otherIndexes TEXT[],
+    authors TEXT[]
+)
+LANGUAGE sql
+AS $$
+    SELECT 
+        p.publicationId,
+        p.title,
+        p.publicationYear,
+        COALESCE(
+            (SELECT array_agg(i.isbn) FROM ISBN i WHERE i.publicationId = p.publicationId),
+            ARRAY[]::TEXT[]
+        ) AS isbns,
+        COALESCE(
+            (SELECT array_agg(br.BBK) FROM BBKRecord br WHERE br.publicationId = p.publicationId),
+            ARRAY[]::TEXT[]
+        ) AS bbks,
+        COALESCE(
+            (SELECT array_agg(oi.index) FROM OtherIndex oi WHERE oi.publicationId = p.publicationId),
+            ARRAY[]::TEXT[]
+        ) AS otherIndexes,
+        COALESCE(
+            (SELECT array_agg(a.lastName || '|' || a.firstName || COALESCE('|' || a.patronymic, '|'))
+                FROM BookAuthor ba 
+                JOIN Author a ON ba.authorId = a.authorId
+                WHERE ba.publicationId = p.publicationId),
+            ARRAY[]::TEXT[]
+        ) AS authors
+    FROM Publication p
+    WHERE EXISTS (
+        SELECT 1
+        FROM BookAuthor ba
+        JOIN Author a ON ba.authorId = a.authorId
+        WHERE ba.publicationId = p.publicationId
+            AND a.lastName ILIKE '%' || p_lastname || '%'
+            AND (p_firstname = '' OR a.firstName ILIKE '%' || p_firstname || '%')
+            AND (p_patronymic = '' OR a.patronymic ILIKE '%' || p_patronymic || '%')
+    );
+$$;
+
+
 --поиск изданий по названию
 CREATE OR REPLACE FUNCTION search_publications_by_title(p_title VARCHAR)
 RETURNS TABLE(
@@ -525,6 +580,77 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
+--Получение полных кодов ббк
+CREATE OR REPLACE FUNCTION get_full_codes_by_mid(mid_codes TEXT[])
+RETURNS TABLE(full_code TEXT)
+LANGUAGE sql
+AS $$
+    SELECT DISTINCT fullTableCode
+    FROM BBKMapping
+    WHERE midTableCode = ANY(mid_codes);
+$$;
+
+--Получение дополнительных кодов ббк
+CREATE OR REPLACE FUNCTION get_alternative_codes_by_source(source_codes TEXT[])
+RETURNS TABLE(target_code TEXT)
+LANGUAGE sql
+AS $$
+    SELECT DISTINCT targetCode
+    FROM BBKAlternative
+    WHERE sourceCode = ANY(source_codes);
+$$;
+
+--получение изданий по ббк
+CREATE OR REPLACE FUNCTION search_publications_by_bbk(prefixes TEXT[])
+RETURNS TABLE(
+    publicationId INT,
+    title VARCHAR,
+    publicationYear INT,
+    isbns TEXT[],
+    bbks TEXT[],
+    otherIndexes TEXT[],
+    authors TEXT[]
+)
+LANGUAGE sql
+AS $$
+    SELECT 
+        p.publicationId,
+        p.title,
+        p.publicationYear,
+        COALESCE(
+            (SELECT array_agg(i.isbn) FROM ISBN i WHERE i.publicationId = p.publicationId),
+            ARRAY[]::TEXT[]
+        ) AS isbns,
+        COALESCE(
+            (SELECT array_agg(br.BBK) FROM BBKRecord br WHERE br.publicationId = p.publicationId),
+            ARRAY[]::TEXT[]
+        ) AS bbks,
+        COALESCE(
+            (SELECT array_agg(oi.index) FROM OtherIndex oi WHERE oi.publicationId = p.publicationId),
+            ARRAY[]::TEXT[]
+        ) AS otherIndexes,
+        COALESCE(
+            (SELECT array_agg(a.lastName || '|' || a.firstName || COALESCE('|' || a.patronymic, '|'))
+             FROM BookAuthor ba 
+             JOIN Author a ON ba.authorId = a.authorId
+             WHERE ba.publicationId = p.publicationId),
+            ARRAY[]::TEXT[]
+        ) AS authors
+    FROM Publication p
+    WHERE 
+        COALESCE(array_length(prefixes, 1), 0) > 0 --1 значит, что массив одномерен
+        AND EXISTS (
+            SELECT 1
+            FROM BBKRecord br
+            WHERE br.publicationId = p.publicationId
+                AND EXISTS ( --для каждого префикса проверяем, что код ббк для издания начинается с этого префикса
+                    SELECT 1
+                    FROM unnest(prefixes) AS prefix
+                    WHERE br.BBK LIKE prefix || '%'
+                )
+        )
+$$;
 
 
 --Бронирование экземпляра по id читателя и id экземпляра. Бронируем на 3 дня

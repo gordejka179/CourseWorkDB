@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -12,12 +13,12 @@ import (
 
 
 type SearchForm struct {
-	Authors string `json:"authors"`
+	Author string `json:"author"`
 	ISBN string `json:"isbn"`
 	Title string `json:"title"`
 	BBKs string `json:"bbks"`
 	PublicationYear string `json:"publicationyear"`
-	OtherIndex string `json:"otherindex"`
+	OtherIndexes string `json:"otherindexes"`
 	AlternativeSearch bool `json:"alternativesearch"` //нужно, чтобы понимать, показывать ли ббк, которые являются рекомендательными
 }
 
@@ -49,36 +50,45 @@ func (h *Handler) searchBook(c *gin.Context) {
         return
     }
 
+	pubYear := 0
+	if (searchForm.PublicationYear != ""){
+		pubYear, _ = strconv.Atoi(searchForm.PublicationYear)
+	}
+
+
 	//Будем получить информацию об изданиях, причем будем стараться получать как можно меньше записей,
 	//то есть делать поиск по параметрам, которые вернут мало значений,
 	//а затем делать пересечения с другими данными
 
 
-	//[Пушкин|Александр|Сергеевич];[Есенин|Сергей]
-	var formattedAuthors []models.Author
-	if searchForm.Authors != ""{
-		Authors := strings.Split(searchForm.Authors, ";")
+	//[Пушкин|Александр|Сергеевич] или например [Есенин|Сергей]
+	var formattedAuthor models.Author
+	if len(searchForm.Author) > 2{
+		a := searchForm.Author
+		a = a[1:len(a) - 1]
+		fullname := strings.Split(a, "|")
+		author := models.Author{LastName: fullname[0], FirstName: fullname[1], Patronymic: fullname[2]}
 
-		for _ , a := range Authors{
-			a = a[1:len(a) - 1]
-			fullname := strings.Split(a, "|")
-
-			author := models.Author{LastName: fullname[0], FirstName: fullname[1], Patronymic: fullname[2]}
-
-			formattedAuthors = append(formattedAuthors, author)
-		}
+		formattedAuthor = author
 	}
 
+	var bbkCodes []string
+    if searchForm.BBKs != "" {
+        parts := strings.Split(searchForm.BBKs, "+")
+        for _, part := range parts {
+            bbkCodes = append(bbkCodes, part)
+        }
+    }
 
 	ParametersForm := usecase.ParametersForm{
-		Authors: formattedAuthors,
+		Author: formattedAuthor,
 		ISBN: searchForm.ISBN,
 		Title: searchForm.Title,
-		PublicationYear: searchForm.PublicationYear,
-		OtherIndex: searchForm.OtherIndex,
+		BBKs: bbkCodes,
+		PublicationYear: pubYear,
+		OtherIndexes: searchForm.OtherIndexes,
 		AdditionalSearch: searchForm.AlternativeSearch,
 	}
-
 	pubsResponse, err := h.service.SearchPublications(ParametersForm)
 
 

@@ -10,6 +10,11 @@ type Repository interface {
 
     GetPublicationsByISBN(ISBN string) ([]models.Publication, error)
     GetPublicationsByTitle(Title string) ([]models.Publication, error)
+    GetPublicationsByAuthor(Author models.Author) ([]models.Publication, error)
+    GetFullCodes(bbkCodes []string) ([]string, error)
+    GetAdditionalCodes(fullCodes []string) ([]string, error)
+    GetPublicationsByBBK(allCodes []string) ([]models.Publication, error)
+
 
     GetCopiesByIDList(ids []int)([]models.Copy, error)
 
