@@ -29,9 +29,17 @@ type Reader struct{
 }
 
 type Author struct {
-    FirstName  string
-    LastName   string
+    FirstName string
+    LastName string
     Patronymic string
+}
+
+type AuthorForAdd struct {
+    AuthorId int
+    FirstName string
+    LastName string
+    Patronymic string
+    BirthDate string
 }
 
 type Building struct {

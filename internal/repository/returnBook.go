@@ -5,26 +5,12 @@ import (
 	"fmt"
 )
 
-func (r *Repository) ReturnBook(readerLibraryCard string, inventoryNumber string) error {
+func (r *Repository) ReturnBook(inventoryNumber string) error {
     tx, err := r.db.Begin()
     if err != nil {
         return fmt.Errorf("не удалось начать транзакцию: %w", err)
     }
     defer tx.Rollback()
-
-    //reader_id по номеру читательского билета
-    var readerId int
-    err = tx.QueryRow(`
-        SELECT readerId 
-        FROM Reader 
-        WHERE libraryCard = $1
-    `, readerLibraryCard).Scan(&readerId)
-    if err != nil {
-        if err == sql.ErrNoRows {
-            return fmt.Errorf("читатель с номером %s не найден", readerLibraryCard)
-        }
-        return fmt.Errorf("ошибка поиска читателя: %w", err)
-    }
 
     // copy_id по инвентарному номеру
     var copyId int
@@ -42,14 +28,14 @@ func (r *Repository) ReturnBook(readerLibraryCard string, inventoryNumber string
 
     var success bool
     err = tx.QueryRow(`
-        SELECT return_copy($1, $2)
-    `, copyId, readerId).Scan(&success)
+        SELECT return_copy($1)`,
+         copyId).Scan(&success)
     if err != nil {
         return fmt.Errorf("ошибка вызова return_copy: %w", err)
     }
 
     if !success {
-        return fmt.Errorf("экземпляр %s не числится за читателем %s", inventoryNumber, readerLibraryCard)
+        return fmt.Errorf("экземпляр с инвентарным номером %s не найден", inventoryNumber)
     }
 
     //фиксируем транзакцию

@@ -30,7 +30,13 @@ type Repository interface {
 
     GetCurrentBookingsByReaderLibraryCard(readerLibraryCard string) ([]models.BookingInformation, error)
 
-    ReturnBook(readerLibraryCard string, inventoryNumber string) error
+    ReturnBook(inventoryNumber string) error
+
+    SearchAuthors(LastName string, FirstName string, Patronymic string, birthDate string) ([]models.AuthorForAdd, error)
+
+    CreateAuthor(lastName, firstName, patronymic, birthDate string) error
+
+     CreatePublication(title string, publicationYear int, authorIds []int, isbns []string, otherIsbns []string, bbks []string, otherIndexes []string) error
 }
 
 type Service struct {

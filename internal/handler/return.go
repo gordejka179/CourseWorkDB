@@ -27,7 +27,6 @@ func (h *Handler) returnBook(c *gin.Context) {
         c.HTML(http.StatusOK, "return.tmpl", gin.H{})
     case http.MethodPost:
         var returnReq struct {
-            ReaderLibraryCard string `json:"readerlibrarycard"`
             InventoryNumber string `json:"inventorynumber"`
         }
 
@@ -36,7 +35,7 @@ func (h *Handler) returnBook(c *gin.Context) {
             return
         }
 
-        err := h.service.ReturnBook(returnReq.ReaderLibraryCard, returnReq.InventoryNumber)
+        err := h.service.ReturnBook(returnReq.InventoryNumber)
         if err != nil {
             c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
             return

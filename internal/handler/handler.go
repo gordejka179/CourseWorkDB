@@ -42,6 +42,10 @@ func (h *Handler) InitRoutes() *gin.Engine {
 		protected.POST("/getLoanedBooks", h.getLoanedBooks)
 		protected.GET("/returnBook", h.returnBook)
 		protected.POST("/returnBook", h.returnBook)
+		protected.POST("/checkAuthor", h.checkAuthor)
+		protected.POST("/createAuthor", h.createAuthor)
+		protected.GET("/addPublication", h.addPublication)
+		protected.POST("/addPublication", h.addPublication)
 	}
 
 	return router

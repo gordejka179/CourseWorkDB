@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Добавление нового издания</title>
+    <style>
+        body {
+            margin: 16px;
+            font-family: system-ui, 'Segoe UI', sans-serif;
+            background: white;
+            color: black;
+        }
+        hr {
+            margin: 16px 0;
+        }
+        fieldset {
+            border: 1px solid #aaa;
+            padding: 8px 12px;
+            margin: 16px 0;
+        }
+        legend {
+            padding: 0 4px;
+        }
+        label {
+            display: inline-block;
+            min-width: 110px;
+            margin-right: 8px;
+        }
+        input, button {
+            font-size: 1rem;
+            padding: 4px 6px;
+            margin: 4px 0;
+        }
+        button {
+            cursor: pointer;
+            background: #eee;
+            border: 1px solid #888;
+        }
+        .author-item {
+            margin: 6px 0;
+        }
+        .remove-author {
+            margin-left: 10px;
+            font-size: 0.8rem;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-window {
+            background: white;
+            border: 2px solid black;
+            padding: 16px;
+            min-width: 320px;
+            max-width: 500px;
+        }
+        .modal-buttons {
+            margin-top: 16px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .result-card {
+            border-bottom: 1px solid gray;
+            padding: 6px 0;
+            margin: 6px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .author-info {
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+    </style>
+</head>
+<body>
+
+<h1>Добавление нового издания</h1>
+
+<fieldset>
+    <legend>Авторы</legend>
+    <button id="addAuthorBtn">Добавить автора</button>
+    <div id="authorsContainer" style="margin-top: 12px;">
+        <em>Нет добавленных авторов</em>
+    </div>
+</fieldset>
+
+<fieldset>
+    <legend>Данные издания</legend>
+    <div><label>ISBN:</label> <input type="text" id="isbn" placeholder="978-5-91921-129-7"></div>
+    <div><label>Other ISBN:</label> <input type="text" id="otherIsbn" placeholder="доп. ISBN"></div>
+    <div><label>Other indexes:</label> <input type="text" id="otherIndexes" placeholder="УДК, индекс"></div>
+    <div><label>ББК:</label> <input type="text" id="bbk" placeholder="Е1"></div>
+    <div><label>Название:</label> <input type="text" id="title" style="width: 280px;" placeholder=""></div>
+    <div><label>Год издания:</label> <input type="text" id="year" placeholder="2025"></div>
+</fieldset>
+
+
+<button id="createPubBtn">Создать издание (createPublication)</button>
+
+
+<script>
+    const CHECK_AUTHOR_URL = '/checkAuthor';
+    const CREATE_AUTHOR_URL = '/createAuthor';
+    const CREATE_PUBLICATION_URL = '/addPublication';
+
+    // Глобальное состояние: выбранные авторы для текущего издания
+    let selectedAuthors = []; // каждый элемент: { id, lastName, firstName, patronymic, birthDate }
+
+    // Открытие модального окна добавления автора
+    function openAddAuthorModal() {
+        if (currentModal) closeModal();
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        const modalDiv = document.createElement('div');
+        modalDiv.className = 'modal-window';
+        overlay.appendChild(modalDiv);
+        document.body.appendChild(overlay);
+        currentModal = overlay;
+        showSearchMode(modalDiv, '');
+        // клик по оверлею для закрытия (по желанию)
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeModal();
+        });
+    }
+
+    // Окно, которое будет открываться при добавлении автора
+    function showSearchMode(modalWindow, initialSearchValue = '') {
+        modalWindow.innerHTML = `
+            <h3>Добавление автора</h3>
+            <div>
+                <label>Поиск (фамилия|имя|отчество|дата рождения): </label>
+                <input type="text" id="searchInput" style="width: 200px;" placeholder="Еськов|Кирилл||" value="${initialSearchValue.replace(/"/g, '&quot;')}">
+                <button id="checkBtn">Проверить</button>
+            </div>
+            <div id="resultsArea" style="margin-top: 12px; max-height: 260px; overflow-y: auto;">
+            </div>
+            <div class="modal-buttons">
+                <button id="closeModalBtn">Отмена</button>
+            </div>
+        `;
+        const searchInput = modalWindow.querySelector('#searchInput');
+        const checkBtn = modalWindow.querySelector('#checkBtn');
+        const closeBtn = modalWindow.querySelector('#closeModalBtn');
+
+        checkBtn.addEventListener('click', async () => {
+            const query = searchInput.value.trim();
+            if (!query) {
+                alert('введите что-то');
+                return;
+            }
+            try {
+                const response = await fetch(CHECK_AUTHOR_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                // Приведение ответа к массиву: может быть { authors: [...] } или просто [...]
+                let authorsList = Array.isArray(data) ? data : (data.authors ? data.authors : []);
+                displaySearchResults(modalWindow, authorsList, query);
+            } catch (err) {
+                const resultsDiv = modalWindow.querySelector('#resultsArea');
+                if (resultsDiv) resultsDiv.innerHTML = `<span style="color:red;">Ошибка запроса: ${err.message}</span>`;
+            }
+        });
+
+        closeBtn.addEventListener('click', () => closeModal());
+    }
+
+    // После нажатия на "проверить" придет ответ. Тут он обрабатывается
+    function displaySearchResults(modalWindow, authors, searchQuery) {
+        const resultsContainer = modalWindow.querySelector('#resultsArea');
+        if (!resultsContainer) return;
+
+        resultsContainer.innerHTML = '<strong>Результаты поиска:</strong>';
+
+        // Если авторы найдены, то показываем их
+        if (authors && authors.length > 0) {
+            authors.forEach(author => {
+                const fullName = `${author.lastName} ${author.firstName} ${author.patronymic || ''}`.trim();
+                const birthStr = author.birthDate ? `род. ${author.birthDate}` : 'дата не указана';
+                const alreadyAdded = isAuthorAlreadyAdded(author.id);
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                card.innerHTML = `
+                    <div class="author-info">
+                        <strong>${fullName}</strong><br>
+                    ID: ${author.id} | ${birthStr}
+                    </div>
+                    <button class="select-author-btn" data-id='${JSON.stringify(author)}' ${alreadyAdded ? 'disabled style="opacity:0.5;"' : ''}>
+                        ${alreadyAdded ? '✓ уже добавлен' : 'Выбрать'}
+                    </button>
+                `;
+                resultsContainer.appendChild(card);
+            });
+
+            // Обработчики кнопок "Выбрать"
+            modalWindow.querySelectorAll('.select-author-btn').forEach(btn => {
+                if (btn.disabled) return;
+                btn.addEventListener('click', () => {
+                    const authorData = JSON.parse(btn.getAttribute('data-id'));
+                    addAuthorToSelection(authorData);
+                    closeModal();
+                });
+            });
+        } else {
+            // Если авторов нет , то выводим сообщение
+            const notFoundMsg = document.createElement('p');
+            notFoundMsg.innerHTML = `<em>Авторы не найдены по запросу "${searchQuery}".</em>`;
+            resultsContainer.appendChild(notFoundMsg);
+        }
+
+        // В любом случае добавляем кнопку "Создать автора"
+        const createButton = document.createElement('button');
+        createButton.textContent = 'Создать автора';
+        createButton.style.marginTop = '12px';
+        createButton.style.display = 'block';
+        createButton.addEventListener('click', () => showCreateAuthorForm(modalWindow, searchQuery));
+        resultsContainer.appendChild(createButton);
+    }
+
+
+
+    // Для создания автора показываем форму
+    function showCreateAuthorForm(modalWindow, searchInputValue) {
+        // заменим содержимое modalWindow на форму создания
+        modalWindow.innerHTML = `
+            <h3>Создать нового автора</h3>
+            <div>
+                <div><label>Фамилия *</label> <input type="text" id="newLastName" placeholder="Иванов"></div>
+                <div><label>Имя</label> <input type="text" id="newFirstName" placeholder="Иван"></div>
+                <div><label>Отчество</label> <input type="text" id="newPatronymic" placeholder="Иванович"></div>
+                <div><label>Дата рождения</label> <input type="date" id="newBirthDate"></div>
+                <div class="modal-buttons">
+                    <button id="submitCreateAuthorBtn">Создать автора</button>
+                    <button id="cancelCreateBtn">Назад к поиску</button>
+                </div>
+            </div>
+        `;
+        const submitBtn = modalWindow.querySelector('#submitCreateAuthorBtn');
+        const cancelBtn = modalWindow.querySelector('#cancelCreateBtn');
+
+        submitBtn.addEventListener('click', async () => {
+            const lastName = modalWindow.querySelector('#newLastName').value.trim();
+            const firstName = modalWindow.querySelector('#newFirstName').value.trim() || '';
+            const patronymic = modalWindow.querySelector('#newPatronymic').value.trim() || '';
+            const birthDate = modalWindow.querySelector('#newBirthDate').value || '';
+
+            if (!lastName) {
+                alert('Фамилия обязательна для создания автора');
+                return;
+            }
+
+            try {
+                const response = await fetch(CREATE_AUTHOR_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lastName, firstName, patronymic, birthDate })
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const newAuthor = await response.json();
+                // ожидаем, что сервер вернёт объект с полем id, lastName, firstName, patronymic, birthDate
+                alert(`Автор успешно создан. Теперь нажмите "Добавить автора" и найдите его.`);
+                closeModal(); // закрываем окно, пользователь снова жмёт "Добавить автора"
+            } catch (err) {
+                alert('Не удалось создать автора.');
+            }
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            // возвращаемся к режиму поиска, сохранив предыдущую поисковую строку
+            showSearchMode(modalWindow, searchInputValue);
+        });
+    }
+
+
+    // Отрисовка списка выбранных авторов
+    function renderAuthorsList() {
+        const container = document.getElementById('authorsContainer');
+        if (!container) return;
+        if (selectedAuthors.length === 0) {
+            container.innerHTML = '<em>Нет добавленных авторов</em>';
+            return;
+        }
+        const wrapper = document.createElement('div');
+        selectedAuthors.forEach((author, idx) => {
+            const fullName = `${author.lastName} ${author.firstName} ${author.patronymic || ''}`.trim();
+            const birth = author.birthDate ? ` (${author.birthDate})` : '';
+            const div = document.createElement('div');
+            div.className = 'author-item';
+            div.innerHTML = `
+                <strong>${fullName}</strong>${birth} (ID: ${author.id})
+                <button class="remove-author" data-idx="${idx}">✖ удалить</button>
+            `;
+            wrapper.appendChild(div);
+        });
+        container.innerHTML = '';
+        container.appendChild(wrapper);
+        // обработчики удаления
+        document.querySelectorAll('.remove-author').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idx = parseInt(btn.getAttribute('data-idx'));
+                if (!isNaN(idx)) {
+                    selectedAuthors.splice(idx, 1);
+                    renderAuthorsList();
+                }
+            });
+        });
+    }
+
+
+    // Добавить автора в список выбора
+    function addAuthorToSelection(author) {
+        if (isAuthorAlreadyAdded(author.id)) {
+            alert(`Автор "${author.lastName} ${author.firstName}" уже добавлен в издание.`);
+            return false;
+        }
+        selectedAuthors.push({
+            id: author.id,
+            lastName: author.lastName,
+            firstName: author.firstName,
+            patronymic: author.patronymic || null,
+            birthDate: author.birthDate || null
+        });
+        renderAuthorsList();
+        return true;
+    }
+
+    // ---------- Модальное окно для добавления автора (поиск + создание) ----------
+    let currentModal = null;
+
+    function closeModal() {
+        if (currentModal && currentModal.parentNode) {
+            currentModal.parentNode.removeChild(currentModal);
+        }
+        currentModal = null;
+    }
+
+    // Проверка, есть ли уже автор в selectedAuthors по id
+    function isAuthorAlreadyAdded(authorId) {
+        return selectedAuthors.some(a => a.id === authorId);
+    }
+
+
+
+    // ---------- Создание публикации ----------
+    async function onCreatePublication() {
+        // собираем поля
+        const isbn = document.getElementById('isbn').value.trim();
+        const otherIsbn = document.getElementById('otherIsbn').value.trim();
+        const otherIndexes = document.getElementById('otherIndexes').value.trim();
+        const bbk = document.getElementById('bbk').value.trim();
+        const title = document.getElementById('title').value.trim();
+        const year = document.getElementById('year').value.trim();
+
+        if (selectedAuthors.length === 0) {
+            alert('Добавьте хотя бы одного автора');
+            return;
+        }
+
+        const authorIds = selectedAuthors.map(a => a.id);
+        const payload = {
+            isbn: isbn || null,
+            otherIsbn: otherIsbn || null,
+            otherIndexes: otherIndexes || null,
+            bbk: bbk || null,
+            title: title,
+            year: year || null,
+            authorIds: authorIds
+        };
+
+        try {
+            const response = await fetch(CREATE_PUBLICATION_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json(); // всегда JSON
+
+            if (!response.ok) {
+                // Поле error может быть в ответе, а может и не быть
+                const errorMsg = data.error || `HTTP ${response.status}`;
+                throw new Error(errorMsg);
+            }
+
+            alert(`Издание успешно создано`);
+        } catch (err) {
+            alert(`Ошибка при создании издания: ${err.message}`)
+        }
+    }
+
+    // Событие для кнопки "добавить автора"
+    document.getElementById('addAuthorBtn').addEventListener('click', () => {
+        openAddAuthorModal();
+    });
+
+    // Событие для кнопки "Создать издание"
+    document.getElementById('createPubBtn').addEventListener('click', onCreatePublication);
+
+    //инициализация
+    renderAuthorsList();
+
+</script>
+</body>
+</html>

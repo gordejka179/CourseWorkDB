@@ -71,15 +71,13 @@ CREATE TABLE OtherIndex (
 );
 
 
-
-
 CREATE TABLE Author (
     authorId   SERIAL PRIMARY KEY,
     birthDate  DATE NOT NULL,
     firstName  VARCHAR(50) NOT NULL,
     lastName   VARCHAR(50) NOT NULL,
     patronymic VARCHAR(50),
-    UNIQUE (birthDate, firstName, lastName)
+    UNIQUE (birthDate, firstName, lastName, patronymic)
 );
 
 CREATE TABLE BookAuthor (
@@ -276,24 +274,13 @@ INSERT INTO BBKMapping (fullTableCode, midTableCode) VALUES
 
 
 
-
-
-
-
-
---представления
-
-
-
 --индексы
 
 
 
 
 
-
 --функции, процедуры
-
 
 CREATE OR REPLACE FUNCTION createReader(
     newEmail VARCHAR(254),
@@ -909,7 +896,7 @@ RETURNS TABLE(
 $$;
 
 --возврат книги
-CREATE OR REPLACE FUNCTION return_copy(p_copy_id INT, p_reader_id INT)
+CREATE OR REPLACE FUNCTION return_copy(p_copy_id INT)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 AS $$
@@ -919,8 +906,160 @@ BEGIN
         librarianId = NULL,
         startDate   = NULL,
         expiryDate  = NULL
-    WHERE copyId = p_copy_id AND readerId = p_reader_id;
+    WHERE copyId = p_copy_id;
 
     RETURN FOUND; --если строка обновилась, то вернём true
+END;
+$$;
+
+
+--список авторов, подходящих под критерии
+CREATE OR REPLACE FUNCTION search_authors(
+    p_lastname VARCHAR,
+    p_firstname VARCHAR,
+    p_patronymic VARCHAR,
+    p_birthdate DATE
+)
+RETURNS TABLE(
+    authorId INT,
+    lastName VARCHAR,
+    firstName VARCHAR,
+    patronymic VARCHAR,
+    birthDate DATE
+)
+LANGUAGE sql
+AS $$
+    SELECT 
+        a.authorId,
+        a.lastName,
+        a.firstName,
+        a.patronymic,
+        a.birthDate
+    FROM Author a
+    WHERE 
+        (p_lastname = '' OR a.lastName ILIKE '%' || p_lastname || '%')
+        AND (p_firstname = '' OR a.firstName ILIKE '%' || p_firstname || '%')
+        AND (p_patronymic = '' OR a.patronymic ILIKE '%' || p_patronymic || '%')
+        AND (p_birthdate IS NULL OR a.birthDate = p_birthdate)
+$$;
+
+--создание автора
+CREATE OR REPLACE FUNCTION create_author(
+    p_lastName   VARCHAR(50),
+    p_firstName  VARCHAR(50),
+    p_patronymic VARCHAR(50),
+    p_birthDate  DATE
+)
+RETURNS VOID AS $$
+BEGIN
+    INSERT INTO Author (lastName, firstName, patronymic, birthDate)
+    VALUES (p_lastName, p_firstName, p_patronymic, p_birthDate);
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+--создание издания
+CREATE OR REPLACE FUNCTION create_publication(
+    p_title VARCHAR,
+    p_publication_year INT,
+    p_author_ids INT[],
+    p_isbns TEXT[],
+    p_other_isbns TEXT[],
+    p_bbks TEXT[],
+    p_other_indexes TEXT[]
+)
+RETURNS INT
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_pub_id INT;
+    v_isbn TEXT;
+    v_bbk TEXT;
+    v_idx TEXT;
+    v_aid INT;
+BEGIN
+    -- Проверка, что ни один из переданных ISBN не используется
+    IF array_length(p_isbns, 1) > 0 OR array_length(p_other_isbns, 1) > 0 THEN
+        PERFORM 1 -- Perform это просто заменитель select, который при этом не сохраняет результат запроса, но при этом показывает вернул ли запрос строки
+        FROM (
+            SELECT unnest(p_isbns) AS isbn
+        ) all_isbns
+        WHERE EXISTS (
+            SELECT 1 FROM ISBN isbn WHERE isbn.ISBN = all_isbns.isbn
+        )
+        LIMIT 1;
+        IF FOUND THEN
+            RAISE EXCEPTION 'Один или несколько ISBN уже используются другим изданием';
+        END IF;
+    END IF;
+
+    -- Вставка публикации
+    INSERT INTO Publication (title, publicationYear)
+    VALUES (p_title, p_publication_year)
+    RETURNING publicationId INTO v_pub_id;
+
+    -- Основные ISBN
+    BEGIN
+        IF p_isbns IS NOT NULL THEN
+            FOREACH v_isbn IN ARRAY p_isbns
+            LOOP
+                IF v_isbn IS NOT NULL AND v_isbn != '' THEN
+                    INSERT INTO ISBN (ISBN, publicationId) VALUES (v_isbn, v_pub_id);
+                END IF;
+            END LOOP;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN --способ перехватить любую ошибку
+            RAISE EXCEPTION 'Такой isbn уже есть у издания в базе' USING ERRCODE = 'I0001'; 
+    END;
+
+    -- Дополнительные ISBN
+    IF p_other_isbns IS NOT NULL THEN
+        FOREACH v_isbn IN ARRAY p_other_isbns
+        LOOP
+            IF v_isbn IS NOT NULL AND v_isbn != '' THEN
+                INSERT INTO ISBNOther (publicationId, ISBN) VALUES (v_pub_id, v_isbn);
+            END IF;
+        END LOOP;
+    END IF;
+
+    -- ББК
+    IF p_bbks IS NOT NULL THEN
+        FOREACH v_bbk IN ARRAY p_bbks
+        LOOP
+            IF v_bbk IS NOT NULL AND v_bbk != '' THEN
+                INSERT INTO BBKRecord (publicationId, BBK) VALUES (v_pub_id, v_bbk);
+            END IF;
+        END LOOP;
+    END IF;
+
+    -- Прочие индексы
+    IF p_other_indexes IS NOT NULL THEN
+        FOREACH v_idx IN ARRAY p_other_indexes
+        LOOP
+            IF v_idx IS NOT NULL AND v_idx != '' THEN
+                INSERT INTO OtherIndex (publicationId, index) VALUES (v_pub_id, v_idx);
+            END IF;
+        
+        END LOOP;
+    END IF;
+
+    -- Авторы
+    BEGIN
+        IF p_author_ids IS NOT NULL THEN
+            FOREACH v_aid IN ARRAY p_author_ids
+            LOOP
+                IF v_aid IS NOT NULL THEN
+                    INSERT INTO BookAuthor (publicationId, authorId) VALUES (v_pub_id, v_aid);
+                END IF;
+            END LOOP;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN --способ перехватить любую ошибку
+            RAISE EXCEPTION 'Таких авторов нет в базе' USING ERRCODE = 'A0001'; 
+    END;
+
+    RETURN v_pub_id;
 END;
 $$;

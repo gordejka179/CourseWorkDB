@@ -8,10 +8,6 @@
     <h2>Возврат книги</h2>
     <form id="returnForm">
         <div class="form-group">
-            <label for="readerLibraryCard">Читательский номер</label>
-            <input type="text" id="readerLibraryCard" name="readerLibraryCard" required>
-        </div>
-        <div class="form-group">
             <label for="inventoryNumber">Инвентарный номер</label>
             <input type="text" id="inventoryNumber" name="inventoryNumber" required>
         </div>
@@ -26,11 +22,10 @@
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
 
-            const readerLibraryCard = document.getElementById('readerLibraryCard').value.trim();
             const inventoryNumber = document.getElementById('inventoryNumber').value.trim();
 
-            if (!readerLibraryCard || !inventoryNumber) {
-                showMessage('Заполните оба поля', false);
+            if (!inventoryNumber) {
+                showMessage('Заполните поле', false);
                 return;
             }
 
@@ -42,8 +37,8 @@
             try {
                 const response = await fetch('/returnBook', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ readerLibraryCard, inventoryNumber })
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({inventoryNumber})
                 });
 
                 if (response.ok) {
