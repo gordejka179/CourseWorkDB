@@ -31,7 +31,11 @@ func (h *Handler) InitRoutes() *gin.Engine {
 	protected.Use(authMiddleware())
 	{
 		protected.GET("/home", h.home)
-		protected.GET("/search", h.search)
+		protected.GET("/searchByIsbn", h.searchByIsbn)
+		protected.GET("/searchByInfo", h.searchByInfo)
+		protected.GET("/searchByBbk", h.searchByBbk)
+		
+
 		protected.POST("/searchBook", h.searchBook)
 		protected.POST("/reserve", h.reserve)
 		protected.GET("/getCurrentBookings", h.getCurrentBookings)

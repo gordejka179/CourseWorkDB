@@ -24,7 +24,7 @@ type SearchForm struct {
 
 
 //выдаём html
-func (h *Handler) search(c *gin.Context) {
+func (h *Handler) searchByIsbn(c *gin.Context) {
     roleRaw, _ := c.Get("role")
     role, ok := roleRaw.(string)
     if !ok {
@@ -33,15 +33,54 @@ func (h *Handler) search(c *gin.Context) {
     }
 
 	if role == "reader"{
-        c.HTML(http.StatusOK, "searchReader.tmpl", gin.H{})
+        c.HTML(http.StatusOK, "searchReaderISBN.tmpl", gin.H{})
         return
     }
         
     if role == "librarian"{        
-	    c.HTML(http.StatusOK, "searchLibrarian.tmpl", gin.H{})
+	    c.HTML(http.StatusOK, "searchLibrarianISBN.tmpl", gin.H{})
         return
     }
 }
+
+func (h *Handler) searchByInfo(c *gin.Context) {
+    roleRaw, _ := c.Get("role")
+    role, ok := roleRaw.(string)
+    if !ok {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "ошибка получения role"})
+        return
+    }
+
+	if role == "reader"{
+        c.HTML(http.StatusOK, "searchReaderInfo.tmpl", gin.H{})
+        return
+    }
+        
+    if role == "librarian"{        
+	    c.HTML(http.StatusOK, "searchLibrarianInfo.tmpl", gin.H{})
+        return
+    }
+}
+
+func (h *Handler) searchByBbk(c *gin.Context) {
+    roleRaw, _ := c.Get("role")
+    role, ok := roleRaw.(string)
+    if !ok {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "ошибка получения role"})
+        return
+    }
+
+	if role == "reader"{
+        c.HTML(http.StatusOK, "searchReaderBBK.tmpl", gin.H{})
+        return
+    }
+        
+    if role == "librarian"{        
+	    c.HTML(http.StatusOK, "searchLibrarianBBK.tmpl", gin.H{})
+        return
+    }
+}
+
 
 func (h *Handler) searchBook(c *gin.Context) {
 	var searchForm SearchForm
