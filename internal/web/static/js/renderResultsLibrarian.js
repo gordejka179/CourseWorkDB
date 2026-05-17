@@ -23,7 +23,7 @@ function renderResults(publications) {
         html += `
             <div class="publication-item" data-pub-id="${pub.id}">
                 <div class="book-title" style="cursor:pointer; color:#2c3e50;">
-                    📘 ${escapeHtml(pub.title)} (${pub.publicationyear})
+                    📘 ${escapeHtml(pub.title)}${pub.publicationyear !== 0 ? ` (${pub.publicationyear})` : ''}
                 </div>
                 <div>Авторы: ${escapeHtml(authors)}</div>
                 <div>ISBN: ${escapeHtml(isbnString)}</div>

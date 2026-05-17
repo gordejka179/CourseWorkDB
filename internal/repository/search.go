@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -158,7 +159,7 @@ func (r *Repository) GetPublicationsByTitle(title string) ([]models.Publication,
             bbks []string
             otherIndexes []string
             isbns []string
-            authors []string //ниже преобразуем
+            authors []sql.NullString
         )
 
         err := rows.Scan(
@@ -171,7 +172,6 @@ func (r *Repository) GetPublicationsByTitle(title string) ([]models.Publication,
             pq.Array(&authors),
         )
 
-        
         if err != nil {
             return nil, err
         }
@@ -179,8 +179,9 @@ func (r *Repository) GetPublicationsByTitle(title string) ([]models.Publication,
         var formattedAuthors []models.Author
 
         for _ , a := range authors{
-            if a != ""{
-			    fullname := strings.Split(a, "|")
+            author := a.String
+            if author != ""{
+			    fullname := strings.Split(author, "|")
 
 			    author := models.Author{LastName: fullname[0], FirstName: fullname[1], Patronymic: fullname[2]}
 

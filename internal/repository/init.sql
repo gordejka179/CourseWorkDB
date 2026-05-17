@@ -73,8 +73,8 @@ CREATE TABLE OtherIndex (
 
 CREATE TABLE Author (
     authorId   SERIAL PRIMARY KEY,
-    birthDate  DATE NOT NULL,
-    firstName  VARCHAR(50) NOT NULL,
+    birthDate  DATE,
+    firstName  VARCHAR(50),
     lastName   VARCHAR(50) NOT NULL,
     patronymic VARCHAR(50),
     UNIQUE (birthDate, firstName, lastName, patronymic)
@@ -113,7 +113,7 @@ CREATE TABLE Reader (
     firstName    VARCHAR(100) NOT NULL,
     lastName     VARCHAR(100) NOT NULL,
     patronymic   VARCHAR(100),
-    passwordHash VARCHAR(128) NOT NULL,
+    passwordHash VARCHAR(32) NOT NULL,
     UNIQUE (passportSeries, passportNumber)
 );
 
@@ -151,8 +151,8 @@ INSERT INTO Librarian (staffNum, email, passwordHash, firstName, lastName, patro
 ('LIB0000002', 'kligunov@179.ru', MD5('1'), 'Клигунов', 'Кирилл', 'Дмитриевич');
 
 INSERT INTO Reader (email, libraryCard, passportSeries, passportNumber, firstName, lastName, patronymic, passwordHash) VALUES
-('1@1', '000000000001', '1944', '111111', 'И', 'В', 'Г', MD5('1')),
-('reader1@mail.ru', '000000000002', '1945', '111112', 'Семён', 'Георгиевич', 'Чайкин', 'hash_reader1');
+('1@1', '000000000001', '1944', '111111', 'Григорий', 'Горюнов', 'Юрьевич', MD5('1')),
+('reader2@mail.ru', '000000000002', '1945', '111112', 'Семён', 'Чайкин', 'Георгиевич', 'hash_reader1');
 
 INSERT INTO Publication (title, publicationYear) VALUES
 --Еськов:
@@ -238,7 +238,10 @@ INSERT INTO Copy (inventoryNumber, publicationId, buildingId, readerId, libraria
 ('INV0000000004', 1, 2, NULL, NULL, NULL, NULL),
 ('INV0000000005', 2, 2, NULL, NULL, NULL, NULL),
 ('INV0000000006', 3, 2, NULL, NULL, NULL, NULL),
-('INV0000000007', 4, 2, NULL, NULL, NULL, NULL);
+('INV0000000007', 4, 2, NULL, NULL, NULL, NULL),
+('INV0000000010', 2, 1, 2, 1, '2025-01-01', '2025-01-31'),
+('INV0000000009', 1, 1, 1, 1, '2026-03-01', '2026-03-31');
+
 
 
 INSERT INTO BBKAlternative (sourceId, targetId) VALUES
@@ -283,7 +286,7 @@ CREATE INDEX idx_copy_pubid_readerid ON Copy (publicationId, readerId); -- дл�
 
 CREATE OR REPLACE FUNCTION create_reader(
     newEmail VARCHAR(254),
-    newPasswordHash VARCHAR(128),
+    newPasswordHash VARCHAR(32),
     newFirstName VARCHAR(100),
     newLastName VARCHAR(100),
     newPassportSeries VARCHAR(4),
@@ -965,15 +968,15 @@ $$;
 
 --создание автора
 CREATE OR REPLACE FUNCTION create_author(
-    p_lastName   VARCHAR(50),
     p_firstName  VARCHAR(50),
+    p_lastName   VARCHAR(50),
     p_patronymic VARCHAR(50),
     p_birthDate  DATE
 )
 RETURNS VOID AS $$
 BEGIN
-    INSERT INTO Author (lastName, firstName, patronymic, birthDate)
-    VALUES (p_lastName, p_firstName, p_patronymic, p_birthDate);
+    INSERT INTO Author (firstName, lastName, patronymic, birthDate)
+    VALUES (p_firstName, p_lastName, p_patronymic, p_birthDate);
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1086,3 +1089,58 @@ BEGIN
     RETURN v_pub_id;
 END;
 $$;
+
+--информация о просроченных экземплярах
+CREATE OR REPLACE FUNCTION get_all_overdue_copies()
+RETURNS TABLE(
+    copy_id INT,
+    inventory_number VARCHAR,
+    book_title VARCHAR,
+    expiry_date DATE,
+    days_overdue INT,
+    reader_last_name VARCHAR,
+    reader_first_name VARCHAR,
+    reader_patronymic VARCHAR,
+    reader_email VARCHAR,
+    reader_library_card VARCHAR
+)
+LANGUAGE sql
+AS $$
+    SELECT 
+        c.copyId,
+        c.inventoryNumber,
+        p.title,
+        c.expiryDate,
+        (CURRENT_DATE - c.expiryDate) AS days_overdue,
+        r.lastName,
+        r.firstName,
+        r.patronymic,
+        r.email,
+        r.libraryCard
+    FROM Copy c
+    JOIN Publication p ON c.publicationId = p.publicationId
+    JOIN Reader r ON c.readerId = r.readerId
+    WHERE c.readerId IS NOT NULL
+      AND c.librarianId IS NOT NULL
+      AND c.expiryDate < CURRENT_DATE
+    ORDER BY days_overdue DESC;
+$$;
+
+
+CREATE OR REPLACE FUNCTION report_overall()
+RETURNS JSON AS $$
+DECLARE
+    result JSON;
+BEGIN
+    SELECT json_build_object(
+        'total', COUNT(*),
+        'available', SUM(CASE WHEN readerId IS NULL AND librarianId IS NULL THEN 1 ELSE 0 END),
+        'reserved', SUM(CASE WHEN readerId IS NOT NULL AND librarianId IS NULL THEN 1 ELSE 0 END),
+        'loaned_out', SUM(CASE WHEN librarianId IS NOT NULL THEN 1 ELSE 0 END),
+        'overdue', SUM(CASE WHEN librarianId IS NOT NULL AND expiryDate < CURRENT_DATE THEN 1 ELSE 0 END)
+    )
+    INTO result
+    FROM Copy;
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql;

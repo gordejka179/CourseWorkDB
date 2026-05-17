@@ -132,7 +132,6 @@ func (s *Service) searchByISBN(form ParametersForm)(map[int]*PublicationResponse
 
 func (s *Service) searchByTitle(form ParametersForm) (map[int]*PublicationResponse, error) {
 	pubs, err := s.repo.GetPublicationsByTitle(form.Title)
-
 	if err != nil{
 		return map[int]*PublicationResponse{}, err
 	}

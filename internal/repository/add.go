@@ -87,13 +87,21 @@ func (r *Repository) CreateAuthor(lastName, firstName, patronymic, birthDate str
     }
     defer tx.Rollback()
 
-	var parsedDate time.Time
+    var dateParam interface{} = nil
 	if birthDate != "" {
         // Парсим в формате  год-месяц-день)
-        parsedDate, err = time.Parse("1991-09-09", birthDate)
+        parsedDate, err := time.Parse("1991-09-09", birthDate)
         if err != nil{
             return fmt.Errorf("неверный формат даты рождения: %w", err)
         }
+        dateParam = parsedDate
+    }
+
+    var firstNamePtr interface{}
+    if patronymic == "" {
+        firstNamePtr = nil
+    } else {
+        firstNamePtr = firstName
     }
 
     var patronymicPtr interface{}
@@ -105,7 +113,7 @@ func (r *Repository) CreateAuthor(lastName, firstName, patronymic, birthDate str
 
     _, err = tx.Exec(
         `SELECT create_author($1, $2, $3, $4)`,
-        lastName, firstName, patronymicPtr, parsedDate,
+        firstNamePtr, lastName, patronymicPtr, dateParam,
     )
     if err != nil {
         if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {

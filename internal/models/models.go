@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type Config struct {
     Server ServerConfig
     DB     DBConfig
@@ -91,4 +93,25 @@ type IssueInformation struct {
 	BBKs []string
     OtherIndexes []string
     Building Building
+}
+
+type OverdueCopy struct {
+	CopyID int
+	InventoryNumber string
+	BookTitle string
+	ExpiryDate time.Time
+	DaysOverdue int
+	ReaderLastName string
+	ReaderFirstName string
+	ReaderPatronymic string
+	ReaderEmail string
+	ReaderLibraryCard string
+}
+
+type OverallStats struct {
+    Total int `json:"total"`
+    Available int `json:"available"`
+    Reserved int `json:"reserved"`
+    LoanedOut int `json:"loaned_out"`
+    Overdue int `json:"overdue"`
 }

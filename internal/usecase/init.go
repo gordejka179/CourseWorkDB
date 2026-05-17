@@ -36,7 +36,11 @@ type Repository interface {
 
     CreateAuthor(lastName, firstName, patronymic, birthDate string) error
 
-     CreatePublication(title string, publicationYear int, authorIds []int, isbns []string, otherIsbns []string, bbks []string, otherIndexes []string) error
+    CreatePublication(title string, publicationYear int, authorIds []int, isbns []string, otherIsbns []string, bbks []string, otherIndexes []string) error
+
+    GetOverdueCopies() ([]models.OverdueCopy, error)
+    GetOverallStats() (*models.OverallStats, error)
+
 }
 
 type Service struct {
