@@ -49,7 +49,7 @@ func (r *Repository) createReaderTx(reader *models.Reader) error {
     var newCard string
 
     err = tx.QueryRow(
-        `SELECT readerId, libraryCard FROM createReader($1, $2, $3, $4, $5, $6, $7)`,
+        `SELECT readerId, libraryCard FROM create_reader($1, $2, $3, $4, $5, $6, $7)`,
         reader.Email,
         reader.PasswordHash,
         reader.FirstName,
@@ -88,7 +88,7 @@ func (r *Repository) CheckReaderCredentials(email, password string) (success boo
     var isValid bool
 
     err = r.db.QueryRow(
-        `SELECT checkReaderCredentials($1, $2)`,
+        `SELECT check_reader_credentials($1, $2)`,
         email, password,
     ).Scan(&isValid)
 
@@ -105,7 +105,7 @@ func (r *Repository) CheckLibrarianCredentials(email, password string) (success 
     var isValid bool
 
     err = r.db.QueryRow(
-        `SELECT checkLibrarianCredentials($1, $2)`,
+        `SELECT check_librarian_credentials($1, $2)`,
         email, password,
     ).Scan(&isValid)
 

@@ -16,13 +16,13 @@ DROP TABLE IF EXISTS Librarian CASCADE;
 
 CREATE TABLE Publication (
     publicationId SERIAL PRIMARY KEY,
-    title VARCHAR NOT NULL,
-    publicationYear INT
+    publicationYear INT,
+    title VARCHAR NOT NULL
 );
 
 
 CREATE TABLE ISBN (
-    ISBN VARCHAR(18) PRIMARY KEY,
+    ISBN VARCHAR(18) PRIMARY KEY, --итак UNIQUE
     publicationId INT NOT NULL,
     FOREIGN KEY (publicationId) REFERENCES Publication(publicationId) ON DELETE CASCADE
 );
@@ -35,32 +35,32 @@ CREATE TABLE ISBNOther (
 );
 
 CREATE TABLE BBKDictionary (
-    BBK VARCHAR(100) PRIMARY KEY
+    bbkId SERIAL PRIMARY KEY,
+    BBK VARCHAR(50) UNIQUE NOT NULL
 );
 
 
 CREATE TABLE BBKAlternative (
-    sourceCode VARCHAR(100),
-    targetCode VARCHAR(100),
-    PRIMARY KEY (sourceCode, targetCode),
-    FOREIGN KEY (sourceCode) REFERENCES BBKDictionary(BBK) ON DELETE CASCADE,
-    FOREIGN KEY (targetCode) REFERENCES BBKDictionary(BBK) ON DELETE CASCADE
+    sourceId INT,
+    targetId INT,
+    PRIMARY KEY (sourceId, targetId),
+    FOREIGN KEY (sourceId) REFERENCES BBKDictionary(bbkId) ON DELETE CASCADE,
+    FOREIGN KEY (targetId) REFERENCES BBKDictionary(bbkId) ON DELETE CASCADE
 );
 
 CREATE TABLE BBKMapping (
-    fullTableCode VARCHAR(100),
-    midTableCode VARCHAR(100),
-    PRIMARY KEY (fullTableCode, midTableCode),
-    FOREIGN KEY (fullTableCode) REFERENCES BBKDictionary(BBK) ON DELETE CASCADE
+    fullTableCodeId INT PRIMARY KEY,
+    midTableCode VARCHAR(50) NULL UNIQUE,
+    FOREIGN KEY (fullTableCodeId) REFERENCES BBKDictionary(bbkId) ON DELETE CASCADE
 );
 
 
 CREATE TABLE BBKRecord (
     publicationId INT NOT NULL,
-    BBK VARCHAR(100) NOT NULL,
-    PRIMARY KEY (publicationId, BBK),
+    BBKId int NOT NULL,
+    PRIMARY KEY (publicationId, BBKId),
     FOREIGN KEY (publicationId) REFERENCES Publication(publicationId) ON DELETE CASCADE,
-    FOREIGN KEY (BBK) REFERENCES BBKDictionary(BBK) ON DELETE CASCADE
+    FOREIGN KEY (BBKId) REFERENCES BBKDictionary(bbkId) ON DELETE CASCADE
 );
 
 CREATE TABLE OtherIndex (
@@ -126,6 +126,7 @@ CREATE TABLE Copy (
     librarianId     INT,
     startDate       DATE,
     expiryDate      DATE,
+    printingYear INT NULL,
     FOREIGN KEY (publicationId) REFERENCES Publication(publicationId) ON DELETE CASCADE,
     FOREIGN KEY (buildingId) REFERENCES LibraryBuilding(libraryBuildingId) ON DELETE CASCADE,
     FOREIGN KEY (readerId) REFERENCES Reader(readerId) ON DELETE SET NULL,
@@ -210,14 +211,13 @@ INSERT INTO BBKDictionary (BBK) VALUES
 
 
 
-INSERT INTO BBKRecord (publicationId, BBK) VALUES
-(1, 'Е1'),
-(2, 'Е1'),
+INSERT INTO BBKRecord (publicationId, BBKId) VALUES
+(1, (SELECT bbkId FROM BBKDictionary WHERE BBK = 'Е1')),
+(2, (SELECT bbkId FROM BBKDictionary WHERE BBK = 'Е1')),
 
 --про лидары:
-(3, 'З81'),
-
-(4, 'З956-5');
+(3, (SELECT bbkId FROM BBKDictionary WHERE BBK = 'З81')),
+(4, (SELECT bbkId FROM BBKDictionary WHERE BBK = 'З956-5'));
 
 INSERT INTO BookAuthor (publicationId, authorId) VALUES
 (1, 1),
@@ -225,7 +225,11 @@ INSERT INTO BookAuthor (publicationId, authorId) VALUES
 (3, 2),
 (3, 3),
 
-(2, 3);
+(2, 3),
+
+--лидары:
+(4, 2),
+(4, 3);
 
 INSERT INTO Copy (inventoryNumber, publicationId, buildingId, readerId, librarianId, startDate, expiryDate) VALUES
 ('INV0000000001', 1, 1, NULL, NULL, NULL, NULL),
@@ -237,52 +241,47 @@ INSERT INTO Copy (inventoryNumber, publicationId, buildingId, readerId, libraria
 ('INV0000000007', 4, 2, NULL, NULL, NULL, NULL);
 
 
-INSERT INTO BBKAlternative (sourceCode, targetCode) VALUES
+INSERT INTO BBKAlternative (sourceId, targetId) VALUES
 --пример с лидарами
-('З956-5', 'З859'), 
+((SELECT bbkId FROM BBKDictionary WHERE BBK = 'З956-5'),
+(SELECT bbkId FROM BBKDictionary WHERE BBK = 'З859')),
+((SELECT bbkId FROM BBKDictionary WHERE BBK = 'З956-5'),
+(SELECT bbkId FROM BBKDictionary WHERE BBK = 'З81'));
 
-('З956-5', 'З81');
 
-
-
-INSERT INTO BBKMapping (fullTableCode, midTableCode) VALUES
+INSERT INTO BBKMapping (fullTableCodeId, midTableCode) VALUES
 --книги на комбинаторику:
-('В181', '22.181'),
-
-('В181.1', '22.181.1'),
-
-('В181.11', '22.181.11'),
-
-('В181.12', '22.181.12'),
-
-('В181.13', '22.181.13'),
-
-('В181.14', '22.181.14'),
-
-('В181.19', '22.181.19'),
+((SELECT bbkId FROM BBKDictionary WHERE BBK = 'В181'), '22.181'),
+((SELECT bbkId FROM BBKDictionary WHERE BBK = 'В181.1'), '22.181.1'),
+((SELECT bbkId FROM BBKDictionary WHERE BBK = 'В181.11'), '22.181.11'),
+((SELECT bbkId FROM BBKDictionary WHERE BBK = 'В181.12'), '22.181.12'),
+((SELECT bbkId FROM BBKDictionary WHERE BBK = 'В181.13'), '22.181.13'),
+((SELECT bbkId FROM BBKDictionary WHERE BBK = 'В181.14'), '22.181.14'),
+((SELECT bbkId FROM BBKDictionary WHERE BBK = 'В181.19'), '22.181.19'),
 
 --Про лидары:
-
-('З81', '32.81'), 
-
-('З859', '32.859'),
-
-('З956-5', '32.956-5'),
+((SELECT bbkId FROM BBKDictionary WHERE BBK = 'З81'), '32.81'),
+((SELECT bbkId FROM BBKDictionary WHERE BBK = 'З859'), '32.859'),
+((SELECT bbkId FROM BBKDictionary WHERE BBK = 'З956-5'), '32.956-5'),
 
 --Еськов:
-('Е1', '28.1');
+((SELECT bbkId FROM BBKDictionary WHERE BBK = 'Е1'), '28.1');
 
 
 
 --индексы
+CREATE INDEX idx_copy_publicationid ON Copy (publicationId); -- для get_copies_info_by_ids
+CREATE INDEX idx_copy_buildingid ON Copy (buildingId);
+CREATE INDEX idx_copy_readerid ON Copy (readerId);
+CREATE INDEX idx_copy_librarianid ON Copy (librarianId);
+CREATE INDEX idx_copy_bookings ON Copy (readerId, expiryDate) WHERE librarianId IS NULL; -- для get_current_bookings_by_readerId
+CREATE INDEX idx_copy_loans ON Copy (readerId) WHERE librarianId IS NOT NULL; --для get_current_loans_by_readerId
+CREATE INDEX idx_copy_pubid_readerid ON Copy (publicationId, readerId); -- для reserve_copy_by_email
 
 
+--функции
 
-
-
---функции, процедуры
-
-CREATE OR REPLACE FUNCTION createReader(
+CREATE OR REPLACE FUNCTION create_reader(
     newEmail VARCHAR(254),
     newPasswordHash VARCHAR(128),
     newFirstName VARCHAR(100),
@@ -343,7 +342,7 @@ $$;
 
 
 
-CREATE OR REPLACE FUNCTION checkReaderCredentials(
+CREATE OR REPLACE FUNCTION check_reader_credentials(
     p_email VARCHAR(254),
     p_password VARCHAR(32)
 )
@@ -359,7 +358,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION checkLibrarianCredentials(
+CREATE OR REPLACE FUNCTION check_librarian_credentials(
     p_email VARCHAR(254),
     p_password VARCHAR(32)
 )
@@ -434,8 +433,10 @@ AS $$
             FROM all_isbns_for_publication aip
             WHERE aip.publicationId = p.publicationId) AS isbns,
 
-        (SELECT array_agg(br.BBK)
-            FROM BBKRecord br WHERE br.publicationId = p.publicationId) AS BBKs,
+        (SELECT array_agg(b.BBK)
+            FROM BBKRecord br
+            JOIN BBKDictionary b ON br.BBKId = b.bbkId
+            WHERE br.publicationId = p.publicationId) AS bbks,
 
         (SELECT array_agg(oi.index)
             FROM OtherIndex oi WHERE oi.publicationId = p.publicationId) AS otherIndexes,
@@ -475,7 +476,10 @@ AS $$
             ARRAY[]::TEXT[]
         ) AS isbns,
         COALESCE(
-            (SELECT array_agg(br.BBK) FROM BBKRecord br WHERE br.publicationId = p.publicationId),
+            (SELECT array_agg(b.BBK) 
+            FROM BBKRecord br 
+            JOIN BBKDictionary b ON br.BBKId = b.bbkId
+            WHERE br.publicationId = p.publicationId),
             ARRAY[]::TEXT[]
         ) AS bbks,
         COALESCE(
@@ -523,8 +527,9 @@ AS $$
             FROM ISBN isbn 
             WHERE isbn.publicationId = p.publicationId) AS isbns,
 
-        (SELECT array_agg(br.BBK)
-            FROM BBKRecord br 
+        (SELECT array_agg(b.BBK)
+            FROM BBKRecord br
+            JOIN BBKDictionary b ON br.BBKId = b.bbkId
             WHERE br.publicationId = p.publicationId) AS BBKs,
 
         (SELECT array_agg(oi.index)
@@ -573,9 +578,10 @@ CREATE OR REPLACE FUNCTION get_full_codes_by_mid(mid_codes TEXT[])
 RETURNS TABLE(full_code TEXT)
 LANGUAGE sql
 AS $$
-    SELECT DISTINCT fullTableCode
-    FROM BBKMapping
-    WHERE midTableCode = ANY(mid_codes);
+    SELECT DISTINCT b.BBK AS full_code
+    FROM BBKMapping m
+    JOIN BBKDictionary b ON m.fullTableCodeId = b.bbkId
+    WHERE m.midTableCode = ANY(mid_codes);
 $$;
 
 --Получение дополнительных кодов ббк
@@ -583,9 +589,11 @@ CREATE OR REPLACE FUNCTION get_alternative_codes_by_source(source_codes TEXT[])
 RETURNS TABLE(target_code TEXT)
 LANGUAGE sql
 AS $$
-    SELECT DISTINCT targetCode
-    FROM BBKAlternative
-    WHERE sourceCode = ANY(source_codes);
+    SELECT DISTINCT b2.BBK AS target_code
+    FROM BBKAlternative alt
+    JOIN BBKDictionary b1 ON alt.sourceId = b1.bbkId
+    JOIN BBKDictionary b2 ON alt.targetId = b2.bbkId
+    WHERE b1.BBK = ANY(source_codes);
 $$;
 
 --получение изданий по ббк
@@ -610,7 +618,10 @@ AS $$
             ARRAY[]::TEXT[]
         ) AS isbns,
         COALESCE(
-            (SELECT array_agg(br.BBK) FROM BBKRecord br WHERE br.publicationId = p.publicationId),
+            (SELECT array_agg(b.BBK) 
+            FROM BBKRecord br 
+            JOIN BBKDictionary b ON br.BBKId = b.bbkId
+            WHERE br.publicationId = p.publicationId),
             ARRAY[]::TEXT[]
         ) AS bbks,
         COALESCE(
@@ -630,11 +641,12 @@ AS $$
         AND EXISTS (
             SELECT 1
             FROM BBKRecord br
+            JOIN BBKDictionary b ON br.BBKId = b.bbkId
             WHERE br.publicationId = p.publicationId
                 AND EXISTS ( --для каждого префикса проверяем, что код ббк для издания начинается с этого префикса
                     SELECT 1
                     FROM unnest(prefixes) AS prefix
-                    WHERE br.BBK LIKE prefix || '%'
+                    WHERE b.BBK LIKE prefix || '%'
                 )
         )
 $$;
@@ -661,7 +673,10 @@ AS $$
             ARRAY[]::TEXT[]
         ) AS isbns,
         COALESCE(
-            (SELECT array_agg(br.BBK) FROM BBKRecord br WHERE br.publicationId = p.publicationId),
+            (SELECT array_agg(b.BBK) 
+            FROM BBKRecord br 
+            JOIN BBKDictionary b ON br.BBKId = b.bbkId
+            WHERE br.publicationId = p.publicationId),
             ARRAY[]::TEXT[]
         ) AS bbks,
         COALESCE(
@@ -765,8 +780,10 @@ AS $$
             ARRAY[]::TEXT[]
         ),
         COALESCE(
-            (SELECT array_agg(DISTINCT br.BBK) FROM BBKRecord br WHERE br.publicationId = p.publicationId),
-            ARRAY[]::TEXT[]
+            (SELECT array_agg(DISTINCT b.BBK) 
+            FROM BBKRecord br 
+            JOIN BBKDictionary b ON br.BBKId = b.bbkId
+            WHERE br.publicationId = p.publicationId), ARRAY[]::TEXT[]
         ),
         COALESCE(
             (SELECT array_agg(DISTINCT oi.index) FROM OtherIndex oi WHERE oi.publicationId = p.publicationId),
@@ -838,7 +855,7 @@ BEGIN
     SET readerId   = p_readerId,
         librarianId = p_librarianId,
         startDate   = CURRENT_DATE,
-        expiryDate  = CURRENT_DATE + INTERVAL '30 days'
+        expiryDate  = CURRENT_DATE + 30
     WHERE copyId = p_copyId;
 
     RETURN TRUE;
@@ -879,7 +896,10 @@ RETURNS TABLE(
             ARRAY[]::TEXT[]
         ),
         COALESCE(
-            (SELECT array_agg(DISTINCT br.BBK) FROM BBKRecord br WHERE br.publicationId = p.publicationId),
+            (SELECT array_agg(DISTINCT b.BBK) 
+            FROM BBKRecord br 
+            JOIN BBKDictionary b ON br.BBKId = b.bbkId
+            WHERE br.publicationId = p.publicationId),
             ARRAY[]::TEXT[]
         ),
         COALESCE(
@@ -1029,7 +1049,10 @@ BEGIN
         FOREACH v_bbk IN ARRAY p_bbks
         LOOP
             IF v_bbk IS NOT NULL AND v_bbk != '' THEN
-                INSERT INTO BBKRecord (publicationId, BBK) VALUES (v_pub_id, v_bbk);
+                INSERT INTO BBKRecord (publicationId, BBKId)
+                SELECT v_pub_id, bbkId
+                FROM BBKDictionary
+                WHERE BBK = v_bbk;
             END IF;
         END LOOP;
     END IF;
