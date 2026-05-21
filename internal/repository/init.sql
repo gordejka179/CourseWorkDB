@@ -224,8 +224,7 @@ INSERT INTO BookAuthor (publicationId, authorId) VALUES
 (2, 1),
 (3, 2),
 (3, 3),
-
-(2, 3),
+--(2, 3),
 
 --лидары:
 (4, 2),
@@ -238,9 +237,9 @@ INSERT INTO Copy (inventoryNumber, publicationId, buildingId, readerId, libraria
 ('INV0000000004', 1, 2, NULL, NULL, NULL, NULL),
 ('INV0000000005', 2, 2, NULL, NULL, NULL, NULL),
 ('INV0000000006', 3, 2, NULL, NULL, NULL, NULL),
-('INV0000000007', 4, 2, NULL, NULL, NULL, NULL),
-('INV0000000010', 2, 1, 2, 1, '2025-01-01', '2025-01-31'),
-('INV0000000009', 1, 1, 1, 1, '2026-03-01', '2026-03-31');
+('INV0000000007', 4, 2, NULL, NULL, NULL, NULL);
+--('INV0000000010', 2, 1, 2, 1, '2025-01-01', '2025-01-31'),
+--('INV0000000009', 1, 1, 1, 1, '2026-03-01', '2026-03-31');
 
 
 
@@ -704,7 +703,7 @@ $$;
 
 
 --Бронирование экземпляра по id читателя и id экземпляра. Бронируем на 3 дня
-CREATE OR REPLACE FUNCTION reserveCopyByEmail(p_readerId INT, p_copyId INT)
+CREATE OR REPLACE FUNCTION reserve_copy(p_readerId INT, p_copyId INT)
 RETURNS BOOLEAN AS $$
 DECLARE
     v_readerId INT;

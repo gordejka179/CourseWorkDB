@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Библиотечная статистика</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .report-selector { margin-bottom: 20px; padding: 10px; background: #f5f5f5; border: 1px solid #ccc; }
+        .params { margin-bottom: 20px; padding: 10px; border: 1px solid #ddd; }
+        button { margin-top: 10px; padding: 5px 12px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 15px; }
+        th, td { border: 1px solid #999; padding: 6px 8px; text-align: left; vertical-align: top; }
+        th { background: #e0e0e0; }
+        .error { color: #c00; }
+    </style>
+</head>
+<body>
+<h2>📊 Отчёты для библиотекаря</h2>
+
+<div class="report-selector">
+    <label>Выберите отчёт:</label>
+    <select id="reportType">
+        <option value="overall">📋 Общий отчёт по всем экземплярам</option>
+        <!-- <option value="byPublication">📖 Состояние конкретного издания (по ID)</option> -->
+        <option value="overdue">⏰ Книги с истёкшим сроком возврата</option>
+    </select>
+</div>
+
+<div id="paramsPanel" class="params" style="display: none;">
+    <label for="pubId">ID издания (publicationId): </label>
+    <input type="number" id="pubId" placeholder="например 1">
+</div>
+
+<div>
+    <button id="runReportBtn">Выполнить отчёт</button>
+</div>
+
+<div id="resultContainer" style="margin-top: 25px;"></div>
+
+<script>
+    const API = {
+        overall: '/overall',
+        overdue: '/overdue'
+    };
+
+    const reportSelect = document.getElementById('reportType');
+    const paramsPanel = document.getElementById('paramsPanel');
+    const runBtn = document.getElementById('runReportBtn');
+    const resultContainer = document.getElementById('resultContainer');
+
+    reportSelect.addEventListener('change', function() {
+        if (reportSelect.value === 'byPublication') {
+            paramsPanel.style.display = 'block';
+        } else {
+            paramsPanel.style.display = 'none';
+        }
+        resultContainer.innerHTML = '';
+    });
+
+    runBtn.addEventListener('click', async () => {
+        const reportType = reportSelect.value;
+        resultContainer.innerHTML = '<em>Загрузка...</em>';
+        try {
+            if (reportType === 'overall') {
+                await renderOverallReport();
+            } else if (reportType === 'byPublication') {
+                const pubId = document.getElementById('pubId').value;
+                if (!pubId) {
+                    resultContainer.innerHTML = '<span class="error">Введите ID издания.</span>';
+                    return;
+                }
+                await renderPublicationReport(pubId);
+            } else if (reportType === 'overdue') {
+                await renderOverdueReport();
+            }
+        } catch (err) {
+            console.error(err);
+            resultContainer.innerHTML = `<span class="error">Ошибка: ${err.message}</span>`;
+        }
+    });
+
+    async function renderOverallReport() {
+        const resp = await fetch(API.overall);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        const html = `
+            <h3>📌 Состояние фонда</h3>
+            <table><thead><tr><th>Показатель</th><th>Количество</th></tr></thead>
+            <tbody>
+                <tr><td>📚 Всего экземпляров</td><td>${data.total ?? '-'}</td></tr>
+                <tr><td>✅ Доступно</td><td>${data.available ?? '-'}</td></tr>
+                <tr><td>⏳ Забронировано</td><td>${data.reserved ?? '-'}</td></tr>
+                <tr><td>📖 Выдано на руки</td><td>${data.loaned_out ?? '-'}</td></tr>
+                <tr><td>⚠️ Просрочено</td><td>${data.overdue ?? '-'}</td></tr>
+            </tbody>
+        </table>
+        `;
+        resultContainer.innerHTML = html;
+    }
+
+    async function renderOverdueReport() {
+        const resp = await fetch(API.overdue);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const overdueList = await resp.json();
+        console.log("Данные от сервера:", overdueList); // отладка
+
+        if (!overdueList || overdueList.length === 0) {
+            resultContainer.innerHTML = '<p>✅ Книг с истёкшим сроком нет</p>';
+            return;
+        }
+
+        let tableRows = '';
+        for (const item of overdueList) {
+            const invNum = item.InventoryNumber;
+            const title = item.BookTitle;
+            // ФИО
+            const readerName = [
+                item.ReaderLastName,
+                item.ReaderFirstName,
+                item.ReaderPatronymic
+            ].filter(Boolean).join(' ') || '-';
+            const email = item.ReaderEmail || '-';
+            const libraryCard = item.ReaderLibraryCard || '-';
+            // Дата – только YYYY-MM-DD
+            let expiryDateStr = '-';
+            if (item.ExpiryDate) {
+                const d = new Date(item.ExpiryDate);
+                if (!isNaN(d.getTime())) {
+                    expiryDateStr = d.toISOString().split('T')[0];
+                }
+            }
+            const days = item.DaysOverdue ?? '-';
+
+            tableRows += `
+                <tr>
+                    <td>${escapeHtml(invNum)}</td>
+                    <td>${escapeHtml(title)}</td>
+                    <td>${escapeHtml(readerName)}</td>
+                    <td>${escapeHtml(email)}</td>
+                    <td>${escapeHtml(libraryCard)}</td>
+                    <td>${escapeHtml(expiryDateStr)}</td>
+                    <td>${escapeHtml(String(days))}</td>
+                </tr>
+            `;
+        }
+
+        const html = `
+            <h3>⏰ Книги с истёкшим сроком возврата</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Инв. номер</th>
+                        <th>Название</th>
+                        <th>Читатель</th>
+                        <th>Email</th>
+                        <th>Читательский билет</th>
+                        <th>Дата возврата (план)</th>
+                        <th>Дней прошло с момента, когда истёк срок</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                </tbody>
+            </table>
+        `;
+        resultContainer.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+</script>
+</body>
+</html>

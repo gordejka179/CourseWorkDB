@@ -29,7 +29,7 @@ func (h *Handler) getInfo(c *gin.Context) {
 
     switch c.Request.Method {
 	case http.MethodGet:
-        c.HTML(http.StatusOK, "searchLibrarianInfo.tmpl", gin.H{})
+        c.HTML(http.StatusOK, "LibrarianReports.tmpl", gin.H{})
 	}
 }
 

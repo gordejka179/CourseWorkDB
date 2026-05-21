@@ -34,7 +34,7 @@ func (r *Repository) ReserveCopyByEmail(email string, copyID int) error {
 
     // бронирование для читателя с readerId
     var success bool
-    err = tx.QueryRow(`SELECT reserveCopyByEmail($1, $2)`, readerID, copyID).Scan(&success)
+    err = tx.QueryRow(`SELECT reserve_copy($1, $2)`, readerID, copyID).Scan(&success)
     if err != nil {
         // Разбор ошибок:
         if pqErr, ok := err.(*pq.Error); ok {
