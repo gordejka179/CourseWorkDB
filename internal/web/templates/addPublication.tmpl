@@ -82,6 +82,10 @@
             font-size: 0.9rem;
         }
 
+        input {
+            width: 360px;
+        }
+
     </style>
 </head>
 <body>
@@ -98,11 +102,11 @@
 
 <fieldset>
     <legend>Данные издания</legend>
-    <div><label>ISBN:</label> <input type="text" id="isbn" placeholder="978-5-91921-129-7"></div>
+    <div><label>ISBN:</label> <input type="text" id="isbn" placeholder=""></div>
     <div><label>Other ISBN:</label> <input type="text" id="otherIsbn"></div>
     <div><label>Other indexes:</label> <input type="text" id="otherIndexes"></div>
     <div><label>ББК:</label> <input type="text" id="bbk"></div>
-    <div><label>Название:</label> <input type="text" id="title" style="width: 280px;" placeholder=""></div>
+    <div><label>Название:</label> <input type="text" id="title" placeholder=""></div>
     <div><label>Год издания:</label> <input type="text" id="year"></div>
 </fieldset>
 
@@ -190,8 +194,9 @@
         // Если авторы найдены, то показываем их
         if (authors && authors.length > 0) {
             authors.forEach(author => {
-                const fullName = `${author.lastName} ${author.firstName} ${author.patronymic || ''}`.trim();
-                const birthStr = author.birthDate ? `род. ${author.birthDate}` : 'дата не указана';
+                const patronymicPart = author.patronymic ? `(${author.patronymic})` : '';
+                const fullName = `${author.lastName} ${author.firstName} ${patronymicPart}`.trim();
+                const birthStr = author.birthDate ? `род. ${author.birthDate}` : 'дата рождения не указана';
                 const alreadyAdded = isAuthorAlreadyAdded(author.id);
                 const card = document.createElement('div');
                 card.className = 'result-card';
@@ -242,7 +247,7 @@
             <div>
                 <div><label>Фамилия *</label> <input type="text" id="newLastName" placeholder="Иванов"></div>
                 <div><label>Имя</label> <input type="text" id="newFirstName" placeholder="Иван"></div>
-                <div><label>Отчество</label> <input type="text" id="newPatronymic" placeholder="Иванович"></div>
+                <div><label>Отчество</label> <input type="text" id="newPatronymic" placeholder=""></div>
                 <div><label>Дата рождения</label> <input type="date" id="newBirthDate"></div>
                 <div class="modal-buttons">
                     <button id="submitCreateAuthorBtn">Создать автора</button>
@@ -339,7 +344,6 @@
         return true;
     }
 
-    // ---------- Модальное окно для добавления автора (поиск + создание) ----------
     let currentModal = null;
 
     function closeModal() {
@@ -363,11 +367,6 @@
         const bbk = document.getElementById('bbk').value.trim();
         const title = document.getElementById('title').value.trim();
         const year = document.getElementById('year').value.trim();
-
-        if (selectedAuthors.length === 0) {
-            alert('Добавьте хотя бы одного автора');
-            return;
-        }
 
         const authorIds = selectedAuthors.map(a => a.id);
         const payload = {

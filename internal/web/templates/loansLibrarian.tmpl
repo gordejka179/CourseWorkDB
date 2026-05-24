@@ -56,7 +56,7 @@
 
                 if (response.ok) {
                     messageDiv.innerHTML = '<div class="message success">Книга выдана</div>';
-                    document.getElementById('invNumber').value = '';
+                    //document.getElementById('invNumber').value = '';
                 } else {
                     messageDiv.innerHTML = `<div class="message error">Ошибка: ${data.error || 'неизвестная ошибка'}</div>`;
                 }

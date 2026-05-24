@@ -18,7 +18,7 @@ func (r *Repository) SearchAuthors(lastName string, firstName string, patronymic
     lastName,
     COALESCE(firstName, '') AS firstName,
     COALESCE(patronymic, '') AS patronymic,
-    COALESCE(birthDate::text, '{}') AS birthDate
+    COALESCE(birthDate::text, '') AS birthDate
     FROM search_authors($1, $2, $3, $4)`
 
 	var parsed time.Time
@@ -61,7 +61,7 @@ func (r *Repository) SearchAuthors(lastName string, firstName string, patronymic
 
 
         authors = append(authors, models.AuthorForAdd{
-            AuthorId : authorId,
+            AuthorId: authorId,
 			FirstName: firstName,
             LastName: lastName,
             Patronymic: patronymic,
@@ -98,7 +98,7 @@ func (r *Repository) CreateAuthor(lastName, firstName, patronymic, birthDate str
     }
 
     var firstNamePtr interface{}
-    if patronymic == "" {
+    if firstName == "" {
         firstNamePtr = nil
     } else {
         firstNamePtr = firstName

@@ -157,21 +157,21 @@ INSERT INTO Reader (email, libraryCard, passportSeries, passportNumber, firstNam
 INSERT INTO Publication (title, publicationYear) VALUES
 --Еськов:
 ('Удивительная палеонтология: история Земли и жизни на ней', 2008),
-('Удивительная палеонтология: история Земли и жизни на ней', 2014),
+('Удивительная палеонтология: история Земли и жизни на ней', 2014);
 
 --лидары (выдуманный пример)
-('Алгоритмы, применяемые в лидарах', 2020),
+--('Алгоритмы для обработки лидарных данных', 2020), Автор: Кирилл Фаярчук
 
-('Лидары', 2025);
+--('Лидары', 2025);
 
 INSERT INTO ISBN (ISBN, publicationId) VALUES
 --Еськов:
 ('978-5-93196-711-0', 1),
-('978-5-91921-129-7', 2),
+('978-5-91921-129-7', 2);
 
 --лидары (выдуманный пример)
-('978-5-99999-999-9', 3),
-('978-5-99999-999-0', 3);
+--('978-5-99999-999-9', 3),
+--('978-5-99999-999-0', 3);
 
 
 INSERT INTO ISBNOther (publicationId, ISBN) VALUES
@@ -206,6 +206,8 @@ INSERT INTO BBKDictionary (BBK) VALUES
 
 ('З956-5'),
 
+('В192'),
+
 --Еськов:
 ('Е1');
 
@@ -213,31 +215,31 @@ INSERT INTO BBKDictionary (BBK) VALUES
 
 INSERT INTO BBKRecord (publicationId, BBKId) VALUES
 (1, (SELECT bbkId FROM BBKDictionary WHERE BBK = 'Е1')),
-(2, (SELECT bbkId FROM BBKDictionary WHERE BBK = 'Е1')),
+(2, (SELECT bbkId FROM BBKDictionary WHERE BBK = 'Е1'));
 
 --про лидары:
-(3, (SELECT bbkId FROM BBKDictionary WHERE BBK = 'З81')),
-(4, (SELECT bbkId FROM BBKDictionary WHERE BBK = 'З956-5'));
+--(3, (SELECT bbkId FROM BBKDictionary WHERE BBK = 'З81')),
+--(4, (SELECT bbkId FROM BBKDictionary WHERE BBK = 'З956-5'));
 
 INSERT INTO BookAuthor (publicationId, authorId) VALUES
 (1, 1),
-(2, 1),
-(3, 2),
-(3, 3),
+(2, 1);
+--(3, 2),
+--(3, 3),
 --(2, 3),
 
 --лидары:
-(4, 2),
-(4, 3);
+--(4, 2),
+--(4, 3);
 
 INSERT INTO Copy (inventoryNumber, publicationId, buildingId, readerId, librarianId, startDate, expiryDate) VALUES
 ('INV0000000001', 1, 1, NULL, NULL, NULL, NULL),
 ('INV0000000002', 1, 1, NULL, NULL, NULL, NULL),
 ('INV0000000003', 1, 1, NULL, NULL, NULL, NULL),
 ('INV0000000004', 1, 2, NULL, NULL, NULL, NULL),
-('INV0000000005', 2, 2, NULL, NULL, NULL, NULL),
-('INV0000000006', 3, 2, NULL, NULL, NULL, NULL),
-('INV0000000007', 4, 2, NULL, NULL, NULL, NULL);
+('INV0000000005', 2, 2, NULL, NULL, NULL, NULL);
+--('INV0000000006', 3, 2, NULL, NULL, NULL, NULL),
+--('INV0000000007', 4, 2, NULL, NULL, NULL, NULL);
 --('INV0000000010', 2, 1, 2, 1, '2025-01-01', '2025-01-31'),
 --('INV0000000009', 1, 1, 1, 1, '2026-03-01', '2026-03-31');
 
@@ -247,6 +249,8 @@ INSERT INTO BBKAlternative (sourceId, targetId) VALUES
 --пример с лидарами
 ((SELECT bbkId FROM BBKDictionary WHERE BBK = 'З956-5'),
 (SELECT bbkId FROM BBKDictionary WHERE BBK = 'З859')),
+((SELECT bbkId FROM BBKDictionary WHERE BBK = 'З956-5'),
+(SELECT bbkId FROM BBKDictionary WHERE BBK = 'В192')),
 ((SELECT bbkId FROM BBKDictionary WHERE BBK = 'З956-5'),
 (SELECT bbkId FROM BBKDictionary WHERE BBK = 'З81'));
 
@@ -265,6 +269,7 @@ INSERT INTO BBKMapping (fullTableCodeId, midTableCode) VALUES
 ((SELECT bbkId FROM BBKDictionary WHERE BBK = 'З81'), '32.81'),
 ((SELECT bbkId FROM BBKDictionary WHERE BBK = 'З859'), '32.859'),
 ((SELECT bbkId FROM BBKDictionary WHERE BBK = 'З956-5'), '32.956-5'),
+((SELECT bbkId FROM BBKDictionary WHERE BBK = 'В192'), '22.193'), --22.193 «Вычислительная математика. Численные методы»
 
 --Еськов:
 ((SELECT bbkId FROM BBKDictionary WHERE BBK = 'Е1'), '28.1');
@@ -278,7 +283,7 @@ CREATE INDEX idx_copy_readerid ON Copy (readerId);
 CREATE INDEX idx_copy_librarianid ON Copy (librarianId);
 CREATE INDEX idx_copy_bookings ON Copy (readerId, expiryDate) WHERE librarianId IS NULL; -- для get_current_bookings_by_readerId
 CREATE INDEX idx_copy_loans ON Copy (readerId) WHERE librarianId IS NOT NULL; --для get_current_loans_by_readerId
-CREATE INDEX idx_copy_pubid_readerid ON Copy (publicationId, readerId); -- для reserve_copy_by_email
+CREATE INDEX idx_copy_pubid_readerid ON Copy (publicationId, readerId); -- для reserve_copy
 
 
 --функции

@@ -75,7 +75,6 @@ func (h *Handler) checkAuthor(c *gin.Context) {
                 BirthDate:  a.BirthDate,
             }
         }
-
         c.JSON(http.StatusOK, response)
 
     default:
