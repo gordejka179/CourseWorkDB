@@ -73,11 +73,11 @@ CREATE TABLE OtherIndex (
 
 CREATE TABLE Author (
     authorId   SERIAL PRIMARY KEY,
-    birthDate  DATE,
+    birthYear  INT,
     firstName  VARCHAR(50),
     lastName   VARCHAR(50) NOT NULL,
     patronymic VARCHAR(50),
-    UNIQUE (birthDate, firstName, lastName, patronymic)
+    UNIQUE (birthYear, firstName, lastName, patronymic)
 );
 
 CREATE TABLE BookAuthor (
@@ -135,12 +135,12 @@ CREATE TABLE Copy (
 
 
 
-INSERT INTO Author (birthDate, firstName, lastName, patronymic) VALUES
-('1956-09-16', 'Кирилл', 'Еськов', 'Юрьевич'),
+INSERT INTO Author (birthYear, firstName, lastName, patronymic) VALUES
+('1956', 'Кирилл', 'Еськов', 'Юрьевич'),
 
 --лидары:
-('1970-09-16', 'Иван', 'Иванов', 'Иванович'),
-('1971-09-16', 'Пётр', 'Петров', NULL);
+('1970', 'Иван', 'Иванов', 'Иванович'),
+('1971', 'Пётр', 'Петров', NULL);
 
 INSERT INTO LibraryBuilding (address, description) VALUES
 ('г. Москва, ул. Б. Дмитровка, д. 5/6, стр. 7', 'Библиотека номер 179'),
@@ -273,6 +273,7 @@ INSERT INTO BBKMapping (fullTableCodeId, midTableCode) VALUES
 
 --Еськов:
 ((SELECT bbkId FROM BBKDictionary WHERE BBK = 'Е1'), '28.1');
+
 
 
 
@@ -945,14 +946,14 @@ CREATE OR REPLACE FUNCTION search_authors(
     p_lastname VARCHAR,
     p_firstname VARCHAR,
     p_patronymic VARCHAR,
-    p_birthdate DATE
+    p_birthyear INT
 )
 RETURNS TABLE(
     authorId INT,
     lastName VARCHAR,
     firstName VARCHAR,
     patronymic VARCHAR,
-    birthDate DATE
+    birthYear INT
 )
 LANGUAGE sql
 AS $$
@@ -961,13 +962,13 @@ AS $$
         a.lastName,
         a.firstName,
         a.patronymic,
-        a.birthDate
+        a.birthYear
     FROM Author a
     WHERE 
         (p_lastname = '' OR a.lastName ILIKE '%' || p_lastname || '%')
         AND (p_firstname = '' OR a.firstName ILIKE '%' || p_firstname || '%')
         AND (p_patronymic = '' OR a.patronymic ILIKE '%' || p_patronymic || '%')
-        AND (p_birthdate IS NULL OR a.birthDate = p_birthdate)
+        AND (p_birthyear IS NULL OR a.birthYear = p_birthyear)
 $$;
 
 --создание автора
@@ -975,12 +976,12 @@ CREATE OR REPLACE FUNCTION create_author(
     p_firstName  VARCHAR(50),
     p_lastName   VARCHAR(50),
     p_patronymic VARCHAR(50),
-    p_birthDate  DATE
+    p_birthYear  INT
 )
 RETURNS VOID AS $$
 BEGIN
-    INSERT INTO Author (firstName, lastName, patronymic, birthDate)
-    VALUES (p_firstName, p_lastName, p_patronymic, p_birthDate);
+    INSERT INTO Author (firstName, lastName, patronymic, birthYear)
+    VALUES (p_firstName, p_lastName, p_patronymic, p_birthYear);
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1148,3 +1149,126 @@ BEGIN
     RETURN result;
 END;
 $$ LANGUAGE plpgsql;
+
+
+--Нагенерил немного данных для защиты
+
+INSERT INTO BBKDictionary (BBK) VALUES
+    ('В11'),
+    ('В12'),
+    ('В13'),
+    ('В14'),
+    ('В15'),
+    ('В16');
+
+INSERT INTO BBKMapping (fullTableCodeId, midTableCode) VALUES
+    ((SELECT bbkId FROM BBKDictionary WHERE BBK = 'В11'), '22.11'),
+    ((SELECT bbkId FROM BBKDictionary WHERE BBK = 'В12'), '22.12'),
+    ((SELECT bbkId FROM BBKDictionary WHERE BBK = 'В13'), '22.13'),
+    ((SELECT bbkId FROM BBKDictionary WHERE BBK = 'В14'), '22.14'),
+    ((SELECT bbkId FROM BBKDictionary WHERE BBK = 'В15'), '22.15'),
+    ((SELECT bbkId FROM BBKDictionary WHERE BBK = 'В16'), '22.16');
+
+INSERT INTO Author (birthYear, firstName, lastName, patronymic) VALUES
+    ('1925', 'Андрей', 'Колмогоров', 'Николаевич'),
+    ('1933', 'Владимир', 'Арнольд', 'Игоревич'),
+    ('1917', 'Иван', 'Виноградов', 'Матвеевич'),
+    ('1905', 'Андрей', 'Тихонов', 'Николаевич');
+
+-- 1. Книга по математическому анализу (ББК В11)
+SELECT create_publication(
+    'Введение в математический анализ',
+    2022,
+    ARRAY[(SELECT authorId FROM Author WHERE lastName = 'Колмогоров' AND firstName = 'Андрей')],
+    ARRAY['978-5-13932-118-1'],
+    NULL,
+    ARRAY['В11'],
+    ARRAY['517.2', 'УДК 517']
+);
+
+-- 2. Книга по геометрии (ББК В12)
+SELECT create_publication(
+    'Геометрия и топология',
+    2021,
+    ARRAY[(SELECT authorId FROM Author WHERE lastName = 'Арнольд' AND firstName = 'Владимир')],
+    ARRAY['978-5-44329-156-2'],
+    NULL,
+    ARRAY['В12'],
+    ARRAY['514']
+);
+
+-- 3. Книга по алгебре (ББК В13)
+SELECT create_publication(
+    'Основы алгебры: группы, кольца, поля',
+    2020,
+    ARRAY[(SELECT authorId FROM Author WHERE lastName = 'Колмогоров' AND firstName = 'Андрей')],
+    ARRAY['978-5-81114-246-8'],
+    NULL,
+    ARRAY['В13'],
+    ARRAY['512']
+);
+
+-- 4. Книга по теории чисел (ББК В14)
+SELECT create_publication(
+    'Теория чисел: классическое введение',
+    2019,
+    ARRAY[(SELECT authorId FROM Author WHERE lastName = 'Виноградов' AND firstName = 'Иван')],
+    ARRAY['978-5-94057-456-3'],
+    NULL,
+    ARRAY['В14'],
+    ARRAY['511']
+);
+
+-- 5. Книга по теории вероятностей (ББК В15)
+SELECT create_publication(
+    'Вероятность и статистика',
+    2023,
+    ARRAY[(SELECT authorId FROM Author WHERE lastName = 'Колмогоров' AND firstName = 'Андрей')],
+    ARRAY['978-5-94057-789-2'],
+    NULL,
+    ARRAY['В15'],
+    ARRAY['519.2']
+);
+
+-- 6. Книга по вычислительной математике (ББК В16)
+SELECT create_publication(
+    'Численные методы для инженеров',
+    2021,
+    ARRAY[(SELECT authorId FROM Author WHERE lastName = 'Тихонов' AND firstName = 'Андрей')],
+    ARRAY['978-5-92210-123-5'],
+    NULL,
+    ARRAY['В16'],
+    ARRAY['519.6']
+);
+
+INSERT INTO Reader (email, libraryCard, passportSeries, passportNumber, firstName, lastName, patronymic, passwordHash) VALUES
+('olga@example.com', 'LIB000000003', '4000', '123456', 'Ольга', 'Кузнецова', 'Алексеевна', MD5('pass1')),
+('elena@example.com', 'LIB000000004', '4001', '234567', 'Елена', 'Михайлова', 'Петровна', MD5('pass2')),
+('sergey@example.com', 'LIB000000005', '4002', '345678', 'Сергей', 'Фёдоров', 'Игоревич', MD5('pass3'));
+
+INSERT INTO Copy (inventoryNumber, publicationId, buildingId, readerId, librarianId, startDate, expiryDate, printingYear) VALUES
+('INV0000000200', (SELECT publicationId FROM Publication WHERE title = 'Введение в математический анализ' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2023),
+('INV0000000201', (SELECT publicationId FROM Publication WHERE title = 'Введение в математический анализ' LIMIT 1), 1, (SELECT readerId FROM Reader WHERE email = 'olga@example.com' LIMIT 1), 1, '2025-05-10', '2026-03-09', 2023),
+('INV0000000202', (SELECT publicationId FROM Publication WHERE title = 'Геометрия и топология' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2021),
+('INV0000000203', (SELECT publicationId FROM Publication WHERE title = 'Геометрия и топология' LIMIT 1), 2, (SELECT readerId FROM Reader WHERE email = 'elena@example.com' LIMIT 1), 1, '2025-05-01', '2026-05-31', 2021),
+('INV0000000204', (SELECT publicationId FROM Publication WHERE title = 'Основы алгебры: группы, кольца, поля' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2020),
+('INV0000000205', (SELECT publicationId FROM Publication WHERE title = 'Основы алгебры: группы, кольца, поля' LIMIT 1), 2, (SELECT readerId FROM Reader WHERE email = 'sergey@example.com' LIMIT 1), 2, '2025-04-20', '2026-05-20', 2020),
+('INV0000000206', (SELECT publicationId FROM Publication WHERE title = 'Теория чисел: классическое введение' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2019),
+('INV0000000207', (SELECT publicationId FROM Publication WHERE title = 'Теория чисел: классическое введение' LIMIT 1), 1, (SELECT readerId FROM Reader WHERE email = 'olga@example.com' LIMIT 1), 1, '2025-04-01', '2026-05-01', 2019),
+('INV0000000208', (SELECT publicationId FROM Publication WHERE title = 'Вероятность и статистика' LIMIT 1), 2, (SELECT readerId FROM Reader WHERE email = 'elena@example.com' LIMIT 1), 2, '2026-03-01', '2026-04-01', 2023),
+('INV0000000209', (SELECT publicationId FROM Publication WHERE title = 'Вероятность и статистика' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2023),
+('INV0000000210', (SELECT publicationId FROM Publication WHERE title = 'Численные методы для инженеров' LIMIT 1), 2, (SELECT readerId FROM Reader WHERE email = 'sergey@example.com' LIMIT 1), 1, '2025-05-15', '2026-01-14', 2021),
+('INV0000000211', (SELECT publicationId FROM Publication WHERE title = 'Численные методы для инженеров' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2021),
+
+('INV0000000300', (SELECT publicationId FROM Publication WHERE title = 'Введение в математический анализ' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2023),
+('INV0000000301', (SELECT publicationId FROM Publication WHERE title = 'Введение в математический анализ' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2023),
+('INV0000000302', (SELECT publicationId FROM Publication WHERE title = 'Геометрия и топология' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2023),
+('INV0000000303', (SELECT publicationId FROM Publication WHERE title = 'Геометрия и топология' LIMIT 1), 2, NULL, NULL, NULL, NULL, 2023),
+('INV0000000304', (SELECT publicationId FROM Publication WHERE title = 'Основы алгебры: группы, кольца, поля' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2020),
+('INV0000000305', (SELECT publicationId FROM Publication WHERE title = 'Основы алгебры: группы, кольца, поля' LIMIT 1), 2, NULL, NULL, NULL, NULL, 2023),
+('INV0000000306', (SELECT publicationId FROM Publication WHERE title = 'Теория чисел: классическое введение' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2019),
+('INV0000000307', (SELECT publicationId FROM Publication WHERE title = 'Теория чисел: классическое введение' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2023),
+('INV0000000308', (SELECT publicationId FROM Publication WHERE title = 'Вероятность и статистика' LIMIT 1), 2, NULL, NULL, NULL, NULL, 2023),
+('INV0000000309', (SELECT publicationId FROM Publication WHERE title = 'Вероятность и статистика' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2023),
+('INV0000000310', (SELECT publicationId FROM Publication WHERE title = 'Численные методы для инженеров' LIMIT 1), 2, NULL, NULL, NULL, NULL, 2023),
+('INV0000000311', (SELECT publicationId FROM Publication WHERE title = 'Численные методы для инженеров' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2021);

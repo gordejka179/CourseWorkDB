@@ -41,7 +41,7 @@ type AuthorForAdd struct {
     FirstName string
     LastName string
     Patronymic string
-    BirthDate string
+    BirthYear string
 }
 
 type Building struct {

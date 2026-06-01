@@ -32,9 +32,9 @@ type Repository interface {
 
     ReturnBook(inventoryNumber string) error
 
-    SearchAuthors(LastName string, FirstName string, Patronymic string, birthDate string) ([]models.AuthorForAdd, error)
+    SearchAuthors(LastName string, FirstName string, Patronymic string, birthYear string) ([]models.AuthorForAdd, error)
 
-    CreateAuthor(lastName, firstName, patronymic, birthDate string) error
+    CreateAuthor(lastName, firstName, patronymic, birthYear string) error
 
     CreatePublication(title string, publicationYear int, authorIds []int, isbns []string, otherIsbns []string, bbks []string, otherIndexes []string) error
 

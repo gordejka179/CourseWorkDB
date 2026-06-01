@@ -120,7 +120,7 @@
     const CREATE_PUBLICATION_URL = '/addPublication';
 
     // Глобальное состояние: выбранные авторы для текущего издания
-    let selectedAuthors = []; // каждый элемент: { id, lastName, firstName, patronymic, birthDate }
+    let selectedAuthors = []; // каждый элемент: { id, lastName, firstName, patronymic, birthYear }
 
     // Открытие модального окна добавления автора
     function openAddAuthorModal() {
@@ -196,7 +196,7 @@
             authors.forEach(author => {
                 const patronymicPart = author.patronymic ? `(${author.patronymic})` : '';
                 const fullName = `${author.lastName} ${author.firstName} ${patronymicPart}`.trim();
-                const birthStr = author.birthDate ? `род. ${author.birthDate}` : 'дата рождения не указана';
+                const birthStr = author.birthYear ? `род. ${author.birthYear}` : 'дата рождения не указана';
                 const alreadyAdded = isAuthorAlreadyAdded(author.id);
                 const card = document.createElement('div');
                 card.className = 'result-card';
@@ -248,7 +248,7 @@
                 <div><label>Фамилия *</label> <input type="text" id="newLastName" placeholder="Иванов"></div>
                 <div><label>Имя</label> <input type="text" id="newFirstName" placeholder="Иван"></div>
                 <div><label>Отчество</label> <input type="text" id="newPatronymic" placeholder=""></div>
-                <div><label>Дата рождения</label> <input type="date" id="newBirthDate"></div>
+                <div><label>Год рождения</label> <input type="text" id="newBirthYear"></div>
                 <div class="modal-buttons">
                     <button id="submitCreateAuthorBtn">Создать автора</button>
                     <button id="cancelCreateBtn">Назад к поиску</button>
@@ -262,7 +262,7 @@
             const lastName = modalWindow.querySelector('#newLastName').value.trim();
             const firstName = modalWindow.querySelector('#newFirstName').value.trim() || '';
             const patronymic = modalWindow.querySelector('#newPatronymic').value.trim() || '';
-            const birthDate = modalWindow.querySelector('#newBirthDate').value || '';
+            const birthYear = modalWindow.querySelector('#newBirthYear').value.trim() || '';
 
             if (!lastName) {
                 alert('Фамилия обязательна для создания автора');
@@ -273,11 +273,11 @@
                 const response = await fetch(CREATE_AUTHOR_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ lastName, firstName, patronymic, birthDate })
+                    body: JSON.stringify({ lastName, firstName, patronymic, birthYear })
                 });
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const newAuthor = await response.json();
-                // ожидаем, что сервер вернёт объект с полем id, lastName, firstName, patronymic, birthDate
+                // ожидаем, что сервер вернёт объект с полем id, lastName, firstName, patronymic, birthYear
                 alert(`Автор успешно создан. Теперь нажмите "Добавить автора" и найдите его.`);
                 closeModal(); // закрываем окно, пользователь снова жмёт "Добавить автора"
             } catch (err) {
@@ -303,7 +303,7 @@
         const wrapper = document.createElement('div');
         selectedAuthors.forEach((author, idx) => {
             const fullName = `${author.lastName} ${author.firstName} ${author.patronymic || ''}`.trim();
-            const birth = author.birthDate ? ` (${author.birthDate})` : '';
+            const birth = author.birthYear ? ` (${author.birthYear})` : '';
             const div = document.createElement('div');
             div.className = 'author-item';
             div.innerHTML = `
@@ -338,7 +338,7 @@
             lastName: author.lastName,
             firstName: author.firstName,
             patronymic: author.patronymic || null,
-            birthDate: author.birthDate || null
+            birthYear: author.birthYear || null
         });
         renderAuthorsList();
         return true;

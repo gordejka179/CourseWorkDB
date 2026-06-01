@@ -16,7 +16,7 @@ type createAuthorForm struct {
 	LastName string `json:"lastName"`
     FirstName string `json:"firstName"`
 	Patronymic string `json:"patronymic"`
-	BirthDate string `json:"birthDate"`
+	BirthYear string `json:"birthYear"`
 }
 
 type createPublicationForm struct {
@@ -34,7 +34,7 @@ type authorResponse struct {
     FirstName string `json:"firstName"`
     LastName string `json:"lastName"`
     Patronymic string `json:"patronymic"`
-    BirthDate string `json:"birthDate"`
+    BirthYear string `json:"birthYear"`
 }
 
 
@@ -72,7 +72,7 @@ func (h *Handler) checkAuthor(c *gin.Context) {
                 FirstName:  a.FirstName,
                 LastName:   a.LastName,
                 Patronymic: a.Patronymic,
-                BirthDate:  a.BirthDate,
+                BirthYear:  a.BirthYear,
             }
         }
         c.JSON(http.StatusOK, response)
@@ -103,7 +103,7 @@ func (h *Handler) createAuthor(c *gin.Context) {
             c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат данных"})
             return
         }
-		err := h.service.CreateAuthor(form.LastName, form.FirstName, form.Patronymic, form.BirthDate)
+		err := h.service.CreateAuthor(form.LastName, form.FirstName, form.Patronymic, form.BirthYear)
         if err != nil{
             c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
         }

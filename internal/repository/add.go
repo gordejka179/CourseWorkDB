@@ -4,33 +4,34 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
+	"strconv"
 
 	"github.com/gordejka179/CourseWorkDB/internal/models"
 	"github.com/lib/pq"
 )
 
 
-func (r *Repository) SearchAuthors(lastName string, firstName string, patronymic string, birthDate string) ([]models.AuthorForAdd, error) {
+func (r *Repository) SearchAuthors(lastName string, firstName string, patronymic string, birthYear string) ([]models.AuthorForAdd, error) {
     query :=
      `SELECT
     authorId,
     lastName,
     COALESCE(firstName, '') AS firstName,
     COALESCE(patronymic, '') AS patronymic,
-    COALESCE(birthDate::text, '') AS birthDate
+    COALESCE(birthYear::text, '') AS birthYear
     FROM search_authors($1, $2, $3, $4)`
 
-	var parsed time.Time
-    var rows *sql.Rows
+
+    var parsedYear interface{} = nil
     var err error
-	if birthDate != "" {
-        // Парсим в формате  год-месяц-день)
-        parsed, err = time.Parse("1991-09-09", birthDate)
+
+    var rows *sql.Rows
+	if birthYear != "" {
+        parsedYear, err = strconv.Atoi(birthYear)
         if err != nil{
-            return []models.AuthorForAdd{}, fmt.Errorf("неверный формат даты рождения: %w", err)
+            return []models.AuthorForAdd{}, fmt.Errorf("неверный формат года рождения: %w", err)
         }
-		rows, err = r.db.Query(query, lastName, firstName, patronymic, parsed)
+		rows, err = r.db.Query(query, lastName, firstName, patronymic, parsedYear)
 
     } else {
 		rows, err = r.db.Query(query, lastName, firstName, patronymic, nil)
@@ -49,10 +50,10 @@ func (r *Repository) SearchAuthors(lastName string, firstName string, patronymic
             lastName string
             firstName string
             patronymic string
-            birthDate string
+            birthYear string
         )
 
-        err = rows.Scan(&authorId, &lastName, &firstName, &patronymic, &birthDate)
+        err = rows.Scan(&authorId, &lastName, &firstName, &patronymic, &birthYear)
 
 
         if err != nil {
@@ -65,7 +66,7 @@ func (r *Repository) SearchAuthors(lastName string, firstName string, patronymic
 			FirstName: firstName,
             LastName: lastName,
             Patronymic: patronymic,
-            BirthDate: birthDate,
+            BirthYear: birthYear,
         })
 
     }
@@ -77,7 +78,7 @@ func (r *Repository) SearchAuthors(lastName string, firstName string, patronymic
 
 }
 
-func (r *Repository) CreateAuthor(lastName, firstName, patronymic, birthDate string) error {
+func (r *Repository) CreateAuthor(lastName, firstName, patronymic, birthYear string) error {
     tx, err := r.db.BeginTx(context.Background(), &sql.TxOptions{
         Isolation: sql.LevelSerializable,
         ReadOnly:  false,
@@ -87,14 +88,12 @@ func (r *Repository) CreateAuthor(lastName, firstName, patronymic, birthDate str
     }
     defer tx.Rollback()
 
-    var dateParam interface{} = nil
-	if birthDate != "" {
-        // Парсим в формате  год-месяц-день)
-        parsedDate, err := time.Parse("1991-09-09", birthDate)
+    var parsedYear interface{} = nil
+	if birthYear != "" {
+        parsedYear, err = strconv.Atoi(birthYear)
         if err != nil{
-            return fmt.Errorf("неверный формат даты рождения: %w", err)
+            return fmt.Errorf("неверный формат года рождения: %w", err)
         }
-        dateParam = parsedDate
     }
 
     var firstNamePtr interface{}
@@ -113,7 +112,7 @@ func (r *Repository) CreateAuthor(lastName, firstName, patronymic, birthDate str
 
     _, err = tx.Exec(
         `SELECT create_author($1, $2, $3, $4)`,
-        firstNamePtr, lastName, patronymicPtr, dateParam,
+        firstNamePtr, lastName, patronymicPtr, parsedYear,
     )
     if err != nil {
         if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
