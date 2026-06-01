@@ -144,7 +144,7 @@
         modalWindow.innerHTML = `
             <h3>Добавление автора</h3>
             <div>
-                <label>Поиск (фамилия|имя|отчество|дата рождения): </label>
+                <label>Поиск (фамилия|имя|отчество|год рождения): </label>
                 <input type="text" id="searchInput" style="width: 200px;" placeholder="Еськов|Кирилл||" value="${initialSearchValue.replace(/"/g, '&quot;')}">
                 <button id="checkBtn">Проверить</button>
             </div>
@@ -196,7 +196,7 @@
             authors.forEach(author => {
                 const patronymicPart = author.patronymic ? `(${author.patronymic})` : '';
                 const fullName = `${author.lastName} ${author.firstName} ${patronymicPart}`.trim();
-                const birthStr = author.birthYear ? `род. ${author.birthYear}` : 'дата рождения не указана';
+                const birthStr = author.birthYear ? `род. ${author.birthYear}` : 'год рождения не указан';
                 const alreadyAdded = isAuthorAlreadyAdded(author.id);
                 const card = document.createElement('div');
                 card.className = 'result-card';
