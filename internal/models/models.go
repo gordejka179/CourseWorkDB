@@ -49,6 +49,12 @@ type Building struct {
     Address string
 }
 
+type Building2 struct {
+    Id int `json:"id"`
+    Address string `json:"address"`
+    Description string `json:"description"`
+}
+
 type Publication struct {
     ID int
     Title string

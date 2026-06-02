@@ -3,6 +3,8 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+
+	"github.com/gordejka179/CourseWorkDB/internal/models"
 )
 
 func (r *Repository) ReturnBook(inventoryNumber string) error {
@@ -44,4 +46,26 @@ func (r *Repository) ReturnBook(inventoryNumber string) error {
     }
 
     return nil
+}
+
+func (r *Repository) GetBuildings()([]models.Building2, error) {
+    query := `SELECT libraryBuildingId, address, description FROM LibraryBuilding ORDER BY libraryBuildingId`
+
+    rows, err := r.db.Query(query)
+    if err != nil {
+        fmt.Println(err)
+        return nil, fmt.Errorf("ошибка выполнения запроса GetBuildings: %w", err)
+    }
+    defer rows.Close()
+
+    var buildings []models.Building2
+    for rows.Next() {
+        var b models.Building2
+        err := rows.Scan(&b.Id, &b.Address, &b.Description)
+        if err != nil {
+            return nil, fmt.Errorf("ошибка сканирования строки: %w", err)
+        }
+        buildings = append(buildings, b)
+    }
+    return buildings, rows.Err()
 }

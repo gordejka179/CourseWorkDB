@@ -3,12 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <title>Возврат книги</title>
+    <style>
+        body {
+            margin: 16px;
+            font-family: system-ui, 'Segoe UI', sans-serif;
+            background: white;
+            color: black;
+        }
+        .form-group {
+            margin-bottom: 12px;
+        }
+        label {
+            display: inline-block;
+            width: 200px;
+        }
+        input, select {
+            font-size: 1rem;
+            padding: 4px 6px;
+            margin: 4px 0;
+        }
+        button {
+            font-size: 1rem;
+            padding: 4px 12px;
+            cursor: pointer;
+            background: #eee;
+            border: 1px solid #888;
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .message {
+            margin-top: 16px;
+            padding: 4px 0;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        .address-hint {
+            font-size: 0.85rem;
+            color: #333;
+            margin-top: 2px;
+        }
+    </style>
 </head>
 <body>
     <h2>Возврат книги</h2>
+
+    <div class="form-group">
+        <label>Выберите здание библиотеки:</label>
+        <select id="librarySelect" required disabled>
+            <option value="">Загрузка списка...</option>
+        </select>
+        <div id="addressHint" class="address-hint"></div>
+    </div>
+
     <form id="returnForm">
         <div class="form-group">
-            <label for="inventoryNumber">Инвентарный номер</label>
+            <label>Инвентарный номер:</label>
             <input type="text" id="inventoryNumber" name="inventoryNumber" required>
         </div>
         <button type="submit">Вернуть книгу</button>
@@ -16,36 +71,114 @@
     <div id="message" class="message"></div>
 
     <script>
+        const librarySelect = document.getElementById('librarySelect');
+        const addressHint = document.getElementById('addressHint');
         const form = document.getElementById('returnForm');
         const messageDiv = document.getElementById('message');
+        const submitBtn = form.querySelector('button');
+
+        let libraries = [];
+
+        async function loadLibraries() {
+            try {
+                const response = await fetch('/getBuildings');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                if (!Array.isArray(data)) throw new Error('Сервер вернул не массив');
+                
+                libraries = data;
+                fillSelect(data);
+            } catch (err) {
+                console.error(err);
+                showMessage('Не удалось загрузить список зданий. Перезагрузите страницу.', false);
+                librarySelect.disabled = true;
+                librarySelect.innerHTML = '<option value="">Ошибка загрузки</option>';
+            }
+        }
+
+        function fillSelect(librariesArray) {
+            librarySelect.innerHTML = '';
+            if (!librariesArray.length) {
+                librarySelect.disabled = true;
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Нет доступных зданий';
+                librarySelect.appendChild(option);
+                showMessage('Список зданий пуст. Возврат невозможен.', false);
+                return;
+            }
+
+            librarySelect.disabled = false;
+            const emptyOption = document.createElement('option');
+            emptyOption.value = '';
+            emptyOption.textContent = '-- Выберите здание --';
+            librarySelect.appendChild(emptyOption);
+
+            librariesArray.forEach(lib => {
+                const option = document.createElement('option');
+                option.value = lib.id;
+                option.textContent = lib.description;
+                librarySelect.appendChild(option);
+            });
+
+            librarySelect.addEventListener('change', () => {
+                const selectedId = librarySelect.value;
+                if (selectedId) {
+                    const found = libraries.find(lib => lib.id == selectedId);
+                    if (found) {
+                        addressHint.textContent = `Адрес: ${found.address}`;
+                    } else {
+                        addressHint.textContent = '';
+                    }
+                } else {
+                    addressHint.textContent = '';
+                }
+            });
+        }
+
+        function showMessage(text, isSuccess) {
+            messageDiv.textContent = text;
+            messageDiv.className = 'message';
+            if (isSuccess === true) {
+                messageDiv.classList.add('success');
+            } else if (isSuccess === false) {
+                messageDiv.classList.add('error');
+            } else {
+                messageDiv.classList.remove('success', 'error');
+            }
+        }
 
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
 
-            const inventoryNumber = document.getElementById('inventoryNumber').value.trim();
-
-            if (!inventoryNumber) {
-                showMessage('Заполните поле', false);
+            const libraryId = librarySelect.value;
+            if (!libraryId) {
+                showMessage('Пожалуйста, выберите здание библиотеки', false);
                 return;
             }
 
-            // Блокируем кнопку на время запроса (просто для удобства)
-            const submitBtn = form.querySelector('button');
+            const inventoryNumber = document.getElementById('inventoryNumber').value.trim();
+            if (!inventoryNumber) {
+                showMessage('Заполните инвентарный номер', false);
+                return;
+            }
+
             submitBtn.disabled = true;
             showMessage('Отправка...', null);
 
             try {
                 const response = await fetch('/returnBook', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({inventoryNumber})
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        inventoryNumber: inventoryNumber,
+                        libraryId: libraryId
+                    })
                 });
 
                 if (response.ok) {
-                    const data = await response.json().catch(() => ({}));
-                    const msg = data.message || data.detail || 'Книга успешно возвращена';
-                    showMessage(msg, true);
-                    form.reset(); // очищаем поля при успехе
+                    // ВСЕГДА показываем "Книга возвращена"
+                    showMessage('Книга возвращена', true);
                 } else {
                     let errorText = 'Ошибка при возврате';
                     try {
@@ -63,15 +196,7 @@
             }
         });
 
-        function showMessage(text, isSuccess) {
-            messageDiv.textContent = text;
-            messageDiv.className = 'message';
-            if (isSuccess === true) {
-                messageDiv.classList.add('success');
-            } else if (isSuccess === false) {
-                messageDiv.classList.add('error');
-            }
-        }
+        loadLibraries();
     </script>
 </body>
 </html>

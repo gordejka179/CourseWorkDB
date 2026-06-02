@@ -11,6 +11,33 @@
         table { border-collapse: collapse; width: 100%; margin-top: 15px; }
         th, td { border: 1px solid #999; padding: 6px 8px; text-align: left; vertical-align: top; }
         th { background: #e0e0e0; }
+
+
+        #resultContainer table {
+            table-layout: fixed;
+            width: 100%;
+        }
+
+        #resultContainer th:nth-child(1),
+        #resultContainer td:nth-child(1) { width: 70px; }
+        #resultContainer th:nth-child(2),
+        #resultContainer td:nth-child(2) { width: 130px; }
+        #resultContainer th:nth-child(3),
+        #resultContainer td:nth-child(3) { width: 80px; }
+        #resultContainer th:nth-child(4),
+        #resultContainer td:nth-child(4) { width: 130px; }
+        #resultContainer th:nth-child(5),
+        #resultContainer td:nth-child(5) { width: 100px; }
+        #resultContainer th:nth-child(6),
+        #resultContainer td:nth-child(6) { width: 110px; }
+        #resultContainer th:nth-child(7),
+        #resultContainer td:nth-child(7) { width: 70px; }
+
+        #resultContainer td {
+            white-space: normal;
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
         .error { color: #c00; }
     </style>
 </head>

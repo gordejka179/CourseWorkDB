@@ -203,7 +203,7 @@
                 card.innerHTML = `
                     <div class="author-info">
                         <strong>${fullName}</strong><br>
-                    ID: ${author.id} | ${birthStr}
+                    ${birthStr}
                     </div>
                     <button class="select-author-btn" data-id='${JSON.stringify(author)}' ${alreadyAdded ? 'disabled style="opacity:0.5;"' : ''}>
                         ${alreadyAdded ? '✓ уже добавлен' : 'Выбрать'}
@@ -307,7 +307,7 @@
             const div = document.createElement('div');
             div.className = 'author-item';
             div.innerHTML = `
-                <strong>${fullName}</strong>${birth} (ID: ${author.id})
+                <strong>${fullName}</strong>${birth}
                 <button class="remove-author" data-idx="${idx}">✖ удалить</button>
             `;
             wrapper.appendChild(div);

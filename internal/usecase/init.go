@@ -41,6 +41,8 @@ type Repository interface {
     GetOverdueCopies() ([]models.OverdueCopy, error)
     GetOverallStats() (*models.OverallStats, error)
 
+    GetBuildings()([]models.Building2, error)
+
 }
 
 type Service struct {

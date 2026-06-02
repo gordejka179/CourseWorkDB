@@ -22,21 +22,21 @@ CREATE TABLE Publication (
 
 
 CREATE TABLE ISBN (
-    ISBN VARCHAR(18) PRIMARY KEY, --итак UNIQUE
+    ISBN VARCHAR(17) PRIMARY KEY, --итак UNIQUE
     publicationId INT NOT NULL,
     FOREIGN KEY (publicationId) REFERENCES Publication(publicationId) ON DELETE CASCADE
 );
 
 CREATE TABLE ISBNOther (
     publicationId INT NOT NULL,
-    ISBN VARCHAR(18) NOT NULL,
+    ISBN VARCHAR(17) NOT NULL,
     PRIMARY KEY (publicationId, ISBN),
     FOREIGN KEY (publicationId) REFERENCES Publication(publicationId) ON DELETE CASCADE
 );
 
 CREATE TABLE BBKDictionary (
     bbkId SERIAL PRIMARY KEY,
-    BBK VARCHAR(50) UNIQUE NOT NULL
+    BBK VARCHAR(20) UNIQUE NOT NULL
 );
 
 
@@ -50,7 +50,7 @@ CREATE TABLE BBKAlternative (
 
 CREATE TABLE BBKMapping (
     fullTableCodeId INT PRIMARY KEY,
-    midTableCode VARCHAR(50) NULL UNIQUE,
+    midTableCode VARCHAR(20) NULL UNIQUE,
     FOREIGN KEY (fullTableCodeId) REFERENCES BBKDictionary(bbkId) ON DELETE CASCADE
 );
 
@@ -99,9 +99,9 @@ CREATE TABLE Librarian (
     staffNum      VARCHAR(10) NOT NULL UNIQUE,
     email         VARCHAR(254) NOT NULL UNIQUE,
     passwordHash  VARCHAR(32) NOT NULL,
-    firstName     VARCHAR(100) NOT NULL,
-    lastName      VARCHAR(100) NOT NULL,
-    patronymic    VARCHAR(100)
+    firstName     VARCHAR(50) NOT NULL,
+    lastName      VARCHAR(50) NOT NULL,
+    patronymic    VARCHAR(50)
 );
 
 CREATE TABLE Reader (
@@ -110,9 +110,9 @@ CREATE TABLE Reader (
     libraryCard  VARCHAR(12) NOT NULL UNIQUE,
     passportSeries VARCHAR(4) NOT NULL,
     passportNumber VARCHAR(6) NOT NULL,
-    firstName    VARCHAR(100) NOT NULL,
-    lastName     VARCHAR(100) NOT NULL,
-    patronymic   VARCHAR(100),
+    firstName    VARCHAR(50) NOT NULL,
+    lastName     VARCHAR(50) NOT NULL,
+    patronymic   VARCHAR(50),
     passwordHash VARCHAR(32) NOT NULL,
     UNIQUE (passportSeries, passportNumber)
 );
@@ -1242,22 +1242,22 @@ SELECT create_publication(
 );
 
 INSERT INTO Reader (email, libraryCard, passportSeries, passportNumber, firstName, lastName, patronymic, passwordHash) VALUES
-('olga@example.com', 'LIB000000003', '4000', '123456', 'Ольга', 'Кузнецова', 'Алексеевна', MD5('pass1')),
-('elena@example.com', 'LIB000000004', '4001', '234567', 'Елена', 'Михайлова', 'Петровна', MD5('pass2')),
-('sergey@example.com', 'LIB000000005', '4002', '345678', 'Сергей', 'Фёдоров', 'Игоревич', MD5('pass3'));
+('olga@yandex.ru', 'LIB000000003', '4000', '123456', 'Ольга', 'Кузнецова', 'Алексеевна', MD5('pass1')),
+('elena@yandex.ru', 'LIB000000004', '4001', '234567', 'Елена', 'Михайлова', 'Петровна', MD5('pass2')),
+('sergey@yandex.ru', 'LIB000000005', '4002', '345678', 'Сергей', 'Фёдоров', 'Игоревич', MD5('pass3'));
 
 INSERT INTO Copy (inventoryNumber, publicationId, buildingId, readerId, librarianId, startDate, expiryDate, printingYear) VALUES
 ('INV0000000200', (SELECT publicationId FROM Publication WHERE title = 'Введение в математический анализ' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2023),
-('INV0000000201', (SELECT publicationId FROM Publication WHERE title = 'Введение в математический анализ' LIMIT 1), 1, (SELECT readerId FROM Reader WHERE email = 'olga@example.com' LIMIT 1), 1, '2025-05-10', '2026-03-09', 2023),
+('INV0000000201', (SELECT publicationId FROM Publication WHERE title = 'Введение в математический анализ' LIMIT 1), 1, (SELECT readerId FROM Reader WHERE email = 'olga@yandex.ru' LIMIT 1), 1, '2025-05-10', '2026-03-09', 2023),
 ('INV0000000202', (SELECT publicationId FROM Publication WHERE title = 'Геометрия и топология' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2021),
-('INV0000000203', (SELECT publicationId FROM Publication WHERE title = 'Геометрия и топология' LIMIT 1), 2, (SELECT readerId FROM Reader WHERE email = 'elena@example.com' LIMIT 1), 1, '2025-05-01', '2026-05-31', 2021),
+('INV0000000203', (SELECT publicationId FROM Publication WHERE title = 'Геометрия и топология' LIMIT 1), 2, (SELECT readerId FROM Reader WHERE email = 'elena@yandex.ru' LIMIT 1), 1, '2025-05-01', '2026-05-31', 2021),
 ('INV0000000204', (SELECT publicationId FROM Publication WHERE title = 'Основы алгебры: группы, кольца, поля' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2020),
-('INV0000000205', (SELECT publicationId FROM Publication WHERE title = 'Основы алгебры: группы, кольца, поля' LIMIT 1), 2, (SELECT readerId FROM Reader WHERE email = 'sergey@example.com' LIMIT 1), 2, '2025-04-20', '2026-05-20', 2020),
+('INV0000000205', (SELECT publicationId FROM Publication WHERE title = 'Основы алгебры: группы, кольца, поля' LIMIT 1), 2, (SELECT readerId FROM Reader WHERE email = 'sergey@yandex.ru' LIMIT 1), 2, '2025-04-20', '2026-05-20', 2020),
 ('INV0000000206', (SELECT publicationId FROM Publication WHERE title = 'Теория чисел: классическое введение' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2019),
-('INV0000000207', (SELECT publicationId FROM Publication WHERE title = 'Теория чисел: классическое введение' LIMIT 1), 1, (SELECT readerId FROM Reader WHERE email = 'olga@example.com' LIMIT 1), 1, '2025-04-01', '2026-05-01', 2019),
-('INV0000000208', (SELECT publicationId FROM Publication WHERE title = 'Вероятность и статистика' LIMIT 1), 2, (SELECT readerId FROM Reader WHERE email = 'elena@example.com' LIMIT 1), 2, '2026-03-01', '2026-04-01', 2023),
+('INV0000000207', (SELECT publicationId FROM Publication WHERE title = 'Теория чисел: классическое введение' LIMIT 1), 1, (SELECT readerId FROM Reader WHERE email = 'olga@yandex.ru' LIMIT 1), 1, '2025-04-01', '2026-05-01', 2019),
+('INV0000000208', (SELECT publicationId FROM Publication WHERE title = 'Вероятность и статистика' LIMIT 1), 2, (SELECT readerId FROM Reader WHERE email = 'elena@yandex.ru' LIMIT 1), 2, '2026-03-01', '2026-04-01', 2023),
 ('INV0000000209', (SELECT publicationId FROM Publication WHERE title = 'Вероятность и статистика' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2023),
-('INV0000000210', (SELECT publicationId FROM Publication WHERE title = 'Численные методы для инженеров' LIMIT 1), 2, (SELECT readerId FROM Reader WHERE email = 'sergey@example.com' LIMIT 1), 1, '2025-05-15', '2026-01-14', 2021),
+('INV0000000210', (SELECT publicationId FROM Publication WHERE title = 'Численные методы для инженеров' LIMIT 1), 2, (SELECT readerId FROM Reader WHERE email = 'sergey@yandex.ru' LIMIT 1), 1, '2025-05-15', '2026-01-14', 2021),
 ('INV0000000211', (SELECT publicationId FROM Publication WHERE title = 'Численные методы для инженеров' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2021),
 
 ('INV0000000300', (SELECT publicationId FROM Publication WHERE title = 'Введение в математический анализ' LIMIT 1), 1, NULL, NULL, NULL, NULL, 2023),

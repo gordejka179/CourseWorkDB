@@ -46,3 +46,31 @@ func (h *Handler) returnBook(c *gin.Context) {
         c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Метод не разрешён"})
     }
 }
+
+
+func (h *Handler) getBuildings(c *gin.Context) {
+	roleRaw, _ := c.Get("role")
+    role, ok := roleRaw.(string)
+    if !ok {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "ошибка получения role"})
+        return
+    }
+
+	if role != "librarian"{
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Вы не библиотекарь"})
+        return
+	}
+
+    switch c.Request.Method {
+	case http.MethodGet:
+        buildings, err := h.service.GetBuildings()
+        if err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "ошибка получения списка зданий: " + err.Error()})
+            return
+        }
+        c.JSON(http.StatusOK, buildings)
+
+    default:
+        c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Метод не разрешён"})
+    }
+}
